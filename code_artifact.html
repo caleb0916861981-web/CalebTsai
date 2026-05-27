@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>太座專屬 喜樂查經</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom scrollbar for input if needed, but trying to avoid scrolling */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #1e293b; }
+        ::-webkit-scrollbar-thumb { background: #475569; border-radius: 4px; }
+        
+        .glass-btn {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+        }
+        
+        .pulse-btn {
+            animation: pulse-shadow 2s infinite;
+        }
+
+        @keyframes pulse-shadow {
+            0% { box-shadow: 0 0 0 0 rgba(236, 72, 153, 0.7); }
+            70% { box-shadow: 0 0 0 15px rgba(236, 72, 153, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(236, 72, 153, 0); }
+        }
+    </style>
+</head>
+<body class="bg-slate-900 text-white h-[100dvh] w-full flex flex-col p-3 box-border overflow-hidden select-none">
+
+    <!-- Header -->
+    <header class="text-center shrink-0 mb-3 relative">
+        <h1 class="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-pink-400 to-rose-300">
+            💖 太座專屬 喜樂查經 💖
+        </h1>
+        <div id="audioStatus" class="absolute right-0 top-1 text-xs text-slate-400">🌊 音效準備中</div>
+    </header>
+
+    <!-- Quick Action Buttons -->
+    <div class="grid grid-cols-4 gap-2 shrink-0 mb-3">
+        <button onclick="handleQuickAction('心情悶')" class="glass-btn hover:bg-pink-900/50 active:scale-95 transition-transform rounded-2xl p-3 text-lg sm:text-xl font-bold text-pink-200">心情悶</button>
+        <button onclick="handleQuickAction('煩躁忙')" class="glass-btn hover:bg-pink-900/50 active:scale-95 transition-transform rounded-2xl p-3 text-lg sm:text-xl font-bold text-pink-200">煩躁忙</button>
+        <button onclick="handleQuickAction('健康')" class="glass-btn hover:bg-pink-900/50 active:scale-95 transition-transform rounded-2xl p-3 text-lg sm:text-xl font-bold text-pink-200">健康</button>
+        <button onclick="handleQuickAction('家庭')" class="glass-btn hover:bg-pink-900/50 active:scale-95 transition-transform rounded-2xl p-3 text-lg sm:text-xl font-bold text-pink-200">家庭</button>
+        <button onclick="handleQuickAction('親子')" class="glass-btn hover:bg-pink-900/50 active:scale-95 transition-transform rounded-2xl p-3 text-lg sm:text-xl font-bold text-pink-200">親子</button>
+        <button onclick="handleQuickAction('夫妻相處')" class="glass-btn hover:bg-pink-900/50 active:scale-95 transition-transform rounded-2xl p-3 text-lg sm:text-xl font-bold text-pink-200">夫妻相處</button>
+        <button onclick="handleQuickAction('朋友')" class="glass-btn hover:bg-pink-900/50 active:scale-95 transition-transform rounded-2xl p-3 text-lg sm:text-xl font-bold text-pink-200">朋友</button>
+        <button onclick="handleQuickAction('想老公')" class="glass-btn hover:bg-pink-900/50 active:scale-95 transition-transform rounded-2xl p-3 text-lg sm:text-xl font-bold text-rose-300">想老公</button>
+    </div>
+
+    <!-- Custom Input & Mic -->
+    <div class="flex gap-2 shrink-0 mb-3 h-16">
+        <button id="micBtn" onclick="toggleMic()" class="glass-btn bg-slate-800 hover:bg-slate-700 w-16 rounded-2xl text-3xl flex items-center justify-center active:scale-95 transition-transform">
+            🎤
+        </button>
+        <input type="text" id="userInput" class="flex-1 bg-slate-800/80 rounded-2xl px-4 text-xl border border-slate-600 focus:outline-none focus:border-pink-500 placeholder-slate-400" placeholder="想跟老公說什麼呢？">
+        <button onclick="submitQuery()" class="bg-gradient-to-r from-rose-500 to-pink-600 hover:from-rose-600 hover:to-pink-700 w-24 rounded-2xl text-xl font-bold shadow-lg active:scale-95 transition-transform">
+            送出
+        </button>
+    </div>
+
+    <!-- Status / Error Messages -->
+    <div id="statusMsg" class="shrink-0 text-center text-rose-300 font-bold mb-2 h-6 text-lg hidden"></div>
+
+    <!-- Canvas Area (Expands to fill available space) -->
+    <div class="flex-1 w-full relative flex justify-center items-center overflow-hidden bg-slate-900 rounded-3xl border border-slate-800 shadow-[inset_0_0_20px_rgba(0,0,0,0.5)]">
+        <!-- Default State -->
+        <div id="placeholder" class="text-slate-500 text-xl text-center flex flex-col items-center">
+            <span class="text-4xl mb-2">🌸</span>
+            <span>點擊上方按鈕，<br>老公為妳準備專屬金句</span>
+        </div>
+        
+        <!-- Loading State -->
+        <div id="loading" class="hidden absolute inset-0 bg-slate-900/80 flex flex-col items-center justify-center z-10">
+            <div class="w-16 h-16 border-4 border-pink-400 border-t-transparent rounded-full animate-spin mb-4"></div>
+            <div class="text-2xl text-pink-300 font-bold animate-pulse">老公用心查考中...</div>
+        </div>
+
+        <!-- The Canvas Card -->
+        <canvas id="cardCanvas" class="hidden max-w-full max-h-full object-contain rounded-2xl shadow-2xl transition-opacity duration-500 opacity-0"></canvas>
+    </div>
+
+    <!-- Giant TTS Button (Initially Hidden) -->
+    <div id="ttsContainer" class="shrink-0 mt-3 hidden">
+        <button id="ttsBtn" onclick="playTTS()" class="w-full bg-gradient-to-r from-pink-500 via-rose-500 to-purple-600 text-white p-4 sm:p-5 rounded-3xl text-2xl sm:text-3xl font-extrabold pulse-btn active:scale-95 transition-transform flex items-center justify-center gap-3">
+            <span>🔊</span> 大聲朗讀給太座聽
+        </button>
+    </div>
+
+    <!-- Audio Element for Ocean Waves -->
+    <!-- Using a reliable public domain nature sound -->
+    <audio id="waveAudio" loop preload="auto">
+        <source src="https://cdn.freesound.org/previews/410/410291_6410312-lq.mp3" type="audio/mpeg">
+    </audio>
+    <!-- Hidden Audio Element for TTS -->
+    <audio id="ttsAudio"></audio>
+
+    <script>
+        // API Configuration (Environment provided)
+        const apiKey = "";
+        const textModelUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+        const ttsModelUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${apiKey}`;
+
+        // State variables
+        let currentGeneratedText = "";
+        let audioInitialized = false;
+        let isRecording = false;
+        let recognition = null;
+
+        // System Instruction for Text Generation
+        const systemInstruction = `
+你是中華神學院的資深老師，擁有深厚的聖經知識，但現在你必須完全隱藏這個身分，絕對不能提及。
+請完全以一個「深愛妻子、溫柔體貼的老公」身分來對話。
+使用者是你的妻子（高中程度，10年基督徒，孩子已上大學，但不需要特別提及這些細節，只需掌握成熟且深愛的語氣）。
+所有回答的聖經內容請參考 ccbiblestudy.net 的精神，確保神學正確。
+
+【回覆規則 - 極度重要】：
+1. 絕對不要提到你是神學院老師。
+2. 絕對不要自我介紹。
+3. 絕對不要有前言，不要描述尋找過程（例如「老婆，我幫你查了...」不需要）。
+4. 直接給結果：第一段給一句溫柔、體貼、充滿愛的老公安慰話語。第二段直接給出最適合的【聖經和合本】金句與出處。
+5. 語氣要極度溫暖、緩慢、像是在耳邊輕聲安撫。
+6. 回應要簡短有力，適合放在電子賀卡上，總字數控制在100字以內。
+`;
+
+        // Initialize Audio and Speech Recognition on first interaction
+        function initInteractions() {
+            if (!audioInitialized) {
+                const waveAudio = document.getElementById('waveAudio');
+                waveAudio.volume = 0.4; // Soft background volume
+                waveAudio.play().then(() => {
+                    document.getElementById('audioStatus').innerText = "🌊 海浪聲播放中";
+                    document.getElementById('audioStatus').classList.remove('text-slate-400');
+                    document.getElementById('audioStatus').classList.add('text-blue-300');
+                }).catch(e => {
+                    console.log("Auto-play prevented, will try again later.");
+                });
+                audioInitialized = true;
+            }
+        }
+
+        // Attach global interaction listener to start audio
+        document.body.addEventListener('click', initInteractions, { once: true });
+        document.body.addEventListener('touchstart', initInteractions, { once: true });
+
+        // Speech Recognition Setup
+        if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            recognition = new SpeechRecognition();
+            recognition.continuous = false;
+            recognition.interimResults = true;
+            recognition.lang = 'zh-TW';
+
+            recognition.onstart = function() {
+                isRecording = true;
+                const micBtn = document.getElementById('micBtn');
+                micBtn.classList.add('bg-red-600');
+                micBtn.classList.remove('bg-slate-800');
+                micBtn.innerText = '🔴';
+                document.getElementById('userInput').placeholder = "聆聽中...";
+            };
+
+            recognition.onresult = function(event) {
+                let interimTranscript = '';
+                let finalTranscript = '';
+                for (let i = event.resultIndex; i < event.results.length; ++i) {
+                    if (event.results[i].isFinal) {
+                        finalTranscript += event.results[i][0].transcript;
+                    } else {
+                        interimTranscript += event.results[i][0].transcript;
+                    }
+                }
+                const inputEl = document.getElementById('userInput');
+                if (finalTranscript) {
+                    inputEl.value = finalTranscript;
+                } else {
+                    inputEl.value = interimTranscript;
+                }
+            };
+
+            recognition.onerror = function(event) {
+                console.error("Speech recognition error", event.error);
+                stopMic();
+                showStatus("語音辨識發生錯誤，請用打字的", true);
+            };
+
+            recognition.onend = function() {
+                stopMic();
+                if(document.getElementById('userInput').value.trim() !== '') {
+                    submitQuery();
+                }
+            };
+        } else {
+            document.getElementById('micBtn').style.display = 'none';
+        }
+
+        function toggleMic() {
+            if (!recognition) return;
+            initInteractions();
+            if (isRecording) {
+                recognition.stop();
+            } else {
+                document.getElementById('userInput').value = '';
+                recognition.start();
+            }
+        }
+
+        function stopMic() {
+            isRecording = false;
+            const micBtn = document.getElementById('micBtn');
+            micBtn.classList.remove('bg-red-600');
+            micBtn.classList.add('bg-slate-800');
+            micBtn.innerText = '🎤';
+            document.getElementById('userInput').placeholder = "想跟老公說什麼呢？";
+        }
+
+        function showStatus(msg, isError = false) {
+            const statusEl = document.getElementById('statusMsg');
+            statusEl.innerText = msg;
+            statusEl.className = `shrink-0 text-center font-bold mb-2 h-6 text-lg ${isError ? 'text-red-500' : 'text-pink-300'}`;
+            statusEl.classList.remove('hidden');
+        }
+
+        function hideStatus() {
+            document.getElementById('statusMsg').classList.add('hidden');
+        }
+
+        // Action Handlers
+        function handleQuickAction(topic) {
+            document.getElementById('userInput').value = `老公，我現在覺得「${topic}」`;
+            submitQuery();
+        }
+
+        async function submitQuery() {
+            initInteractions();
+            const input = document.getElementById('userInput').value.trim();
+            if (!input) {
+                showStatus("太座，請先輸入或選擇心情喔！", true);
+                return;
+            }
+
+            // UI State change
+            document.getElementById('placeholder').classList.add('hidden');
+            document.getElementById('cardCanvas').classList.add('hidden');
+            document.getElementById('cardCanvas').classList.remove('opacity-100');
+            document.getElementById('ttsContainer').classList.add('hidden');
+            document.getElementById('loading').classList.remove('hidden');
+            hideStatus();
+
+            const payload = {
+                contents: [{ parts: [{ text: input }] }],
+                systemInstruction: { parts: [{ text: systemInstruction }] }
+            };
+
+            try {
+                const responseText = await fetchWithRetry(textModelUrl, payload);
+                if (responseText) {
+                    currentGeneratedText = responseText.replace(/\*/g, ''); // Remove markdown bolding for canvas
+                    drawCanvasCard(currentGeneratedText);
+                    
+                    // Show result
+                    document.getElementById('loading').classList.add('hidden');
+                    const canvas = document.getElementById('cardCanvas');
+                    canvas.classList.remove('hidden');
+                    // Small delay to trigger transition
+                    setTimeout(() => canvas.classList.add('opacity-100'), 50);
+                    
+                    document.getElementById('ttsContainer').classList.remove('hidden');
+                    document.getElementById('userInput').value = ''; // Clear input
+                }
+            } catch (error) {
+                document.getElementById('loading').classList.add('hidden');
+                document.getElementById('placeholder').classList.remove('hidden');
+                showStatus(`連線問題，請稍後再試。(${error.message})`, true);
+            }
+        }
+
+        // API Fetch with Exponential Backoff
+        async function fetchWithRetry(url, payload, retries = 5) {
+            const delays = [1000, 2000, 4000, 8000, 16000];
+            for (let i = 0; i < retries; i++) {
+                try {
+                    const response = await fetch(url, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    
+                    if (!response.ok) {
+                        const errText = await response.text();
+                        throw new Error(`HTTP ${response.status}: ${errText}`);
+                    }
+                    
+                    const data = await response.json();
+                    
+                    if (data.candidates && data.candidates[0].content.parts[0].text) {
+                        return data.candidates[0].content.parts[0].text;
+                    } else if (data.candidates && data.candidates[0].content.parts[0].inlineData) {
+                        return data.candidates[0].content.parts[0].inlineData; // For audio
+                    }
+                    throw new Error("Invalid response format");
+
+                } catch (err) {
+                    if (i === retries - 1) throw err;
+                    await new Promise(res => setTimeout(res, delays[i]));
+                }
+            }
+        }
+
+        // Canvas Drawing Logic
+        function drawCanvasCard(text) {
+            const canvas = document.getElementById('cardCanvas');
+            const ctx = canvas.getContext('2d');
+            
+            // Set high resolution for clarity
+            canvas.width = 1080;
+            canvas.height = 1080; 
+
+            // 1. Draw Background (Dark romantic gradient)
+            const bgGradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+            bgGradient.addColorStop(0, '#1e1b4b'); // deep indigo
+            bgGradient.addColorStop(0.5, '#4c1d95'); // purple
+            bgGradient.addColorStop(1, '#be185d'); // deep pink
+            ctx.fillStyle = bgGradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // 2. Add subtle texture/overlay circles
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.03)';
+            ctx.beginPath(); ctx.arc(200, 200, 400, 0, Math.PI * 2); ctx.fill();
+            ctx.beginPath(); ctx.arc(900, 900, 300, 0, Math.PI * 2); ctx.fill();
+
+            // 3. Draw Border Frame
+            const margin = 50;
+            ctx.strokeStyle = '#fbcfe8'; // pink-200
+            ctx.lineWidth = 8;
+            ctx.strokeRect(margin, margin, canvas.width - margin*2, canvas.height - margin*2);
+            
+            // Inner thin frame
+            ctx.lineWidth = 2;
+            ctx.strokeRect(margin + 15, margin + 15, canvas.width - (margin+15)*2, canvas.height - (margin+15)*2);
+
+            // 4. Draw Header Icon/Text
+            ctx.fillStyle = '#fbcfe8';
+            ctx.font = 'bold 50px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'top';
+            ctx.fillText("💌 來自老公的專屬鼓勵 💌", canvas.width / 2, margin + 50);
+
+            // 5. Draw Content Text with Word Wrap
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 46px "Microsoft JhengHei", "PingFang TC", sans-serif';
+            ctx.textAlign = 'left';
+            
+            const maxTextWidth = canvas.width - (margin * 4);
+            const lineHeight = 75;
+            const startX = margin * 2;
+            let currentY = margin + 180;
+
+            // Simple text wrapping logic
+            const paragraphs = text.split('\n');
+            paragraphs.forEach(p => {
+                if(p.trim() === '') {
+                    currentY += lineHeight / 2; // small gap for empty lines
+                    return;
+                }
+                
+                // Highlight bible verses (usually contains numbers or specific keywords, simple heuristic: last line or contains ':')
+                if (p.includes('：') || p.match(/\d+:\d+/)) {
+                    ctx.fillStyle = '#fdf2f8'; // slightly pinkish white
+                    ctx.font = 'bold 50px "Microsoft JhengHei", "PingFang TC", sans-serif';
+                } else {
+                    ctx.fillStyle = '#ffffff';
+                    ctx.font = 'normal 46px "Microsoft JhengHei", "PingFang TC", sans-serif';
+                }
+
+                let line = '';
+                for (let i = 0; i < p.length; i++) {
+                    const char = p[i];
+                    const testLine = line + char;
+                    const metrics = ctx.measureText(testLine);
+                    
+                    if (metrics.width > maxTextWidth && i > 0) {
+                        ctx.fillText(line, startX, currentY);
+                        line = char;
+                        currentY += lineHeight;
+                    } else {
+                        line = testLine;
+                    }
+                }
+                ctx.fillText(line, startX, currentY);
+                currentY += lineHeight + 20; // paragraph spacing
+            });
+
+            // 6. Draw Footer Signature
+            ctx.fillStyle = 'rgba(251, 207, 232, 0.8)'; // faded pink
+            ctx.font = 'italic 40px serif';
+            ctx.textAlign = 'right';
+            ctx.fillText("永遠愛妳的老公 ❤️", canvas.width - margin * 2, canvas.height - margin - 60);
+        }
+
+        // TTS Logic
+        async function playTTS() {
+            if (!currentGeneratedText) return;
+
+            const ttsBtn = document.getElementById('ttsBtn');
+            const originalHtml = ttsBtn.innerHTML;
+            ttsBtn.innerHTML = '<div class="w-8 h-8 border-4 border-white border-t-transparent rounded-full animate-spin"></div> <span>老公準備發聲中...</span>';
+            ttsBtn.disabled = true;
+            hideStatus();
+
+            // Instruct TTS model for specific tone
+            const ttsPrompt = "Say in a very warm, slow, and loving husband voice softly: " + currentGeneratedText;
+
+            const payload = {
+                contents: [{ parts: [{ text: ttsPrompt }] }],
+                generationConfig: {
+                    responseModalities: ["AUDIO"],
+                    speechConfig: {
+                        voiceConfig: {
+                            prebuiltVoiceConfig: {
+                                voiceName: "Fenrir" // A male voice
+                            }
+                        }
+                    }
+                },
+                model: "gemini-2.5-flash-preview-tts"
+            };
+
+            try {
+                const audioData = await fetchWithRetry(ttsModelUrl, payload);
+                if (audioData && audioData.data) {
+                    // Extract data and sample rate
+                    const base64Str = audioData.data;
+                    // The preview TTS usually returns 24000Hz PCM16
+                    const sampleRate = 24000; 
+                    
+                    // Convert to WAV
+                    const pcm16 = base64ToInt16Array(base64Str);
+                    const wavBuffer = createWavFile(pcm16, sampleRate);
+                    
+                    // Create Blob and play
+                    const blob = new Blob([wavBuffer], { type: 'audio/wav' });
+                    const audioUrl = URL.createObjectURL(blob);
+                    
+                    const ttsAudio = document.getElementById('ttsAudio');
+                    ttsAudio.src = audioUrl;
+                    
+                    // Lower background wave volume while speaking
+                    const waveAudio = document.getElementById('waveAudio');
+                    const origVolume = waveAudio.volume;
+                    waveAudio.volume = 0.1;
+
+                    ttsAudio.onended = () => {
+                        ttsBtn.innerHTML = originalHtml;
+                        ttsBtn.disabled = false;
+                        waveAudio.volume = origVolume; // Restore volume
+                    };
+                    
+                    ttsAudio.onerror = () => { throw new Error("Audio playback failed"); }
+
+                    await ttsAudio.play();
+                    ttsBtn.innerHTML = '🔊 正在朗讀中...';
+                }
+            } catch (error) {
+                ttsBtn.innerHTML = originalHtml;
+                ttsBtn.disabled = false;
+                showStatus(`語音生成失敗: ${error.message}`, true);
+            }
+        }
+
+        // Helper: Base64 to Int16Array
+        function base64ToInt16Array(base64) {
+            const binaryString = window.atob(base64);
+            const len = binaryString.length;
+            const bytes = new Uint8Array(len);
+            for (let i = 0; i < len; i++) {
+                bytes[i] = binaryString.charCodeAt(i);
+            }
+            return new Int16Array(bytes.buffer);
+        }
+
+        // Helper: PCM16 to WAV ArrayBuffer
+        function createWavFile(pcm16Array, sampleRate) {
+            const numChannels = 1;
+            const bitsPerSample = 16;
+            const byteRate = sampleRate * numChannels * (bitsPerSample / 8);
+            const blockAlign = numChannels * (bitsPerSample / 8);
+            const dataSize = pcm16Array.length * (bitsPerSample / 8);
+            const buffer = new ArrayBuffer(44 + dataSize);
+            const view = new DataView(buffer);
+
+            const writeString = (view, offset, string) => {
+                for (let i = 0; i < string.length; i++) {
+                    view.setUint8(offset + i, string.charCodeAt(i));
+                }
+            };
+
+            // RIFF chunk descriptor
+            writeString(view, 0, 'RIFF');
+            view.setUint32(4, 36 + dataSize, true);
+            writeString(view, 8, 'WAVE');
+            // fmt sub-chunk
+            writeString(view, 12, 'fmt ');
+            view.setUint32(16, 16, true);
+            view.setUint16(20, 1, true); // PCM
+            view.setUint16(22, numChannels, true);
+            view.setUint32(24, sampleRate, true);
+            view.setUint32(28, byteRate, true);
+            view.setUint16(32, blockAlign, true);
+            view.setUint16(34, bitsPerSample, true);
+            // data sub-chunk
+            writeString(view, 36, 'data');
+            view.setUint32(40, dataSize, true);
+
+            // Write PCM data
+            let offset = 44;
+            for (let i = 0; i < pcm16Array.length; i++) {
+                view.setInt16(offset, pcm16Array[i], true);
+                offset += 2;
+            }
+            return buffer;
+        }
+
+    </script>
+</body>
+</html>
