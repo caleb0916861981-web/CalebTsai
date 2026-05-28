@@ -146,7 +146,6 @@
         </div>
       </div>
 
-      <!-- 輸入控制欄位 -->
       <div class="mt-4 flex items-center gap-3 max-w-md mx-auto w-full pb-4">
         <!-- 麥克風輸入 -->
         <button id="micBtn" onclick="toggleSpeech()" class="h-14 w-14 rounded-full bg-amber-500 hover:bg-amber-600 flex items-center justify-center shrink-0 transition-all shadow-lg shadow-amber-500/20 active:scale-95" title="語音輸入">
@@ -248,7 +247,7 @@
 
 回覆限制：絕對不要寫任何開頭問候語(如"老婆好")或結尾語，也不需要提及你是神學院老師。直接輸出上述兩段內容。`;
 
-    // 語音輸入變數
+    // 語音輸入全域變數
     let recognition = null;
     let isListening = false;
 
@@ -284,7 +283,7 @@
       } else {
         showToast("已成功讀取本機裝置儲存的 API 金鑰");
       }
-      initSpeechRecognition();
+      // 【優化】不要在 onload 時提前建立 SpeechRecognition 物件，避免休眠與背景時效性卡死
     };
 
     function showToast(msg) {
@@ -386,26 +385,26 @@
       document.getElementById('musicStatus').innerText = "愛的真諦:關";
     }
 
+    // 【極致優化】實作每次點擊時重新建構 SpeechRecognition，避免任何「未就緒」或卡死的硬體衝突狀態
     function initSpeechRecognition() {
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
       if (!SpeechRecognition) {
-        console.warn("裝置不支援 SpeechRecognition 語音介面");
-        return;
+        return null;
       }
 
-      recognition = new SpeechRecognition();
-      recognition.continuous = false;
-      recognition.lang = 'zh-TW';
-      recognition.interimResults = false;
-      recognition.maxAlternatives = 1;
+      const recInstance = new SpeechRecognition();
+      recInstance.continuous = false;
+      recInstance.lang = 'zh-TW';
+      recInstance.interimResults = false;
+      recInstance.maxAlternatives = 1;
 
-      recognition.onstart = function() {
+      recInstance.onstart = function() {
         isListening = true;
         document.getElementById('micBtn').classList.add('mic-active');
         document.getElementById('userInput').placeholder = "老公正在聽，請對著手機說話...";
       };
 
-      recognition.onerror = function(e) {
+      recInstance.onerror = function(e) {
         console.error("語音輸入錯誤:", e.error);
         stopSpeechUI();
         
@@ -439,21 +438,24 @@
         }
       };
 
-      recognition.onend = function() {
+      recInstance.onend = function() {
         stopSpeechUI();
       };
 
-      recognition.onresult = function(event) {
+      recInstance.onresult = function(event) {
         const text = event.results[0][0].transcript;
         document.getElementById('userInput').value = text;
         showToast("已收到太座的傾訴：" + text);
         triggerSearch();
       };
+
+      return recInstance;
     }
 
     // 啟動語音辨識（整合 HTTPS 安全診斷與音訊釋放）
     function toggleSpeech() {
-      if (!recognition) {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SpeechRecognition) {
         showToast("此手機裝置的瀏覽器未開放或不支援麥克風語音輸入");
         return;
       }
@@ -468,22 +470,24 @@
       }
 
       if (isListening) {
-        recognition.stop();
+        if (recognition) recognition.stop();
       } else {
         // iPhone 硬體防衝突優化：強制暫停背景配樂與朗讀，騰出音訊通道
         stopBackgroundMusic();
         window.speechSynthesis.cancel();
 
+        // 每次錄音都實體化一個全新乾淨的錄音實例，徹底解決 iOS 未就緒/卡死問題！
+        recognition = initSpeechRecognition();
+        if (!recognition) {
+          showToast("語音辨識模組無法載入，建議直接手動輸入");
+          return;
+        }
+
         try {
           recognition.start();
         } catch (e) {
           console.error("啟動辨識失敗", e);
-          initSpeechRecognition(); // 崩潰時重新實例化
-          try {
-            recognition.start();
-          } catch(err) {
-            showToast("錄音啟動失敗，請重新載入或使用手動輸入。");
-          }
+          showToast("錄音啟動失敗，請重新載入或使用手動輸入。");
         }
       }
     }
@@ -493,7 +497,6 @@
       document.getElementById('micBtn').classList.remove('mic-active');
       document.getElementById('userInput').placeholder = "跟老公說點心事，或直接按麥克風...";
     }
-
 
     async function fetchWithTimeoutAndRetry(url, options, retries = 1, delay = 500, timeoutMs = 4000) {
       const controller = new AbortController();
