@@ -1,107 +1,779 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>太座喜樂查經</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        html, body { overflow: hidden; height: 100%; width: 100%; position: fixed; touch-action: manipulation; }
-        .card-glow { box-shadow: 0 0 30px rgba(251, 191, 36, 0.2); }
-    </style>
-</head>
-<body class="bg-slate-950 text-slate-100 flex flex-col p-4 h-full">
-
-    <header class="h-[10%] flex items-center justify-between">
-        <h1 class="text-xl font-bold text-amber-400 tracking-wider">太座喜樂查經</h1>
-        <button onclick="openKeyModal()" class="text-2xl p-2">⚙️</button>
-    </header>
-
-    <div class="h-[20%] grid grid-cols-4 gap-2 py-2">
-        <button onclick="handleQuickSearch('心情悶')" class="bg-slate-800 rounded-lg text-xs font-bold border border-slate-700">心情悶</button>
-        <button onclick="handleQuickSearch('煩躁忙')" class="bg-slate-800 rounded-lg text-xs font-bold border border-slate-700">煩躁忙</button>
-        <button onclick="handleQuickSearch('健康')" class="bg-slate-800 rounded-lg text-xs font-bold border border-slate-700">健康</button>
-        <button onclick="handleQuickSearch('家庭')" class="bg-slate-800 rounded-lg text-xs font-bold border border-slate-700">家庭</button>
-    </div>
-
-    <div class="h-[45%] flex flex-col justify-center">
-        <div id="card" class="card-glow w-full h-full rounded-2xl bg-slate-900 border border-slate-800 p-6 flex flex-col justify-center text-center">
-            <p id="msg" class="text-sm leading-relaxed text-slate-200">親愛的，點選上方分類或按下麥克風，讓老公用神的話語陪伴妳。</p>
-            <p id="verse" class="text-xs text-amber-400 mt-4 italic font-serif"></p>
-        </div>
-    </div>
-
-    <div class="h-[25%] flex flex-col gap-2 pt-4">
-        <button id="ttsBtn" onclick="readAloud()" class="hidden w-full bg-pink-700 py-4 rounded-xl font-bold text-sm shadow-lg">🎙️ 朗讀給太座聽</button>
-        <button onclick="startVoice()" id="micBtn" class="w-full bg-slate-800 py-4 rounded-xl text-sm font-bold border border-slate-700">🎤 跟老公說說話</button>
-    </div>
-
-    <div id="keyModal" class="hidden fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-6">
-        <div class="bg-slate-900 p-6 rounded-2xl w-full max-w-sm border border-slate-700">
-            <h3 class="text-amber-400 mb-4 font-bold">API Key 設定</h3>
-            <input type="password" id="apiKeyInput" class="w-full bg-black p-3 rounded mb-4 text-white border border-slate-600" placeholder="AIza...">
-            <button onclick="saveKey()" class="w-full bg-amber-600 py-3 rounded text-white font-bold">確認儲存</button>
-        </div>
-    </div>
-
-    <script>
-        let apiKey = localStorage.getItem('wife_bible_key') || "";
-        let lastMsg = "", lastVerse = "";
-
-        function openKeyModal() { document.getElementById('keyModal').classList.remove('hidden'); }
-        function saveKey() { apiKey = document.getElementById('apiKeyInput').value.trim(); localStorage.setItem('wife_bible_key', apiKey); document.getElementById('keyModal').classList.add('hidden'); }
-
-        async function fetchAI(text, retry = 0) {
-            if (!apiKey) return openKeyModal();
-            const msgEl = document.getElementById('msg');
-            msgEl.textContent = "查經中，請稍候...";
-            
-            // 修正：將模型更新為 gemini-2.5-flash，這是目前穩定的端點版本
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
-            
-            try {
-                const response = await fetch(url, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        contents: [{ parts: [{ text: `作為老公，請給太太溫柔的安慰，並引用一句聖經。格式：安慰內容[SPLIT]聖經金句。問題：${text}` }] }]
-                    })
-                });
-
-                if (!response.ok) {
-                    const errData = await response.json().catch(() => ({}));
-                    throw new Error(`錯誤碼: ${response.status} - ${errData.error?.message || '請確認 API 金鑰是否有效'}`);
-                }
-
-                const data = await response.json();
-                const parts = data.candidates[0].content.parts[0].text.split("[SPLIT]");
-                lastMsg = parts[0]; lastVerse = parts[1];
-                msgEl.textContent = lastMsg;
-                document.getElementById('verse').textContent = lastVerse;
-                document.getElementById('ttsBtn').classList.remove('hidden');
-            } catch (err) {
-                if (retry < 2) {
-                    setTimeout(() => fetchAI(text, retry + 1), 1000);
-                } else {
-                    msgEl.textContent = "連線異常：" + err.message;
-                }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>太座喜樂查經介面</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            gold: {
+              50: '#fdfbf7',
+              100: '#fbf7ed',
+              200: '#f4e9cf',
+              300: '#eddcb1',
+              400: '#e1bf75',
+              500: '#d4a338',
+              600: '#bf9232',
+              700: '#9f7a2a',
+              800: '#7f6221',
+              900: '#68501b',
             }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    /* 隱藏滾動條，確保單頁不捲動 */
+    body, html {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      overflow: hidden;
+      background-color: #030712; /* slate-950 */
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    }
+    
+    /* 呼吸燈特效 */
+    @keyframes pulse-gold {
+      0%, 100% { transform: scale(1); box-shadow: 0 0 10px rgba(212, 163, 56, 0.4); }
+      50% { transform: scale(1.05); box-shadow: 0 0 25px rgba(212, 163, 56, 0.8); }
+    }
+    .mic-active {
+      animation: pulse-gold 1.5s infinite;
+      background-color: #ef4444 !important;
+    }
+
+    /* 卡片微發光 */
+    .premium-card {
+      background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(30, 27, 75, 0.95) 100%);
+      box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.1), 0 0 15px rgba(212, 163, 56, 0.15);
+    }
+    
+    /* 漸變文字 */
+    .gold-text-gradient {
+      background: linear-gradient(to right, #ffe17d, #d4a338, #f5d061);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+  </style>
+</head>
+<body class="text-slate-100 flex flex-col justify-between h-full w-full select-none">
+
+  <!-- 頂部導覽列 (佔高約 8%) -->
+  <header class="h-[8%] flex items-center justify-between px-4 bg-slate-900/60 border-b border-slate-800/80 backdrop-blur-md shrink-0">
+    <div class="flex items-center gap-2">
+      <!-- 溫馨小愛心圖示 -->
+      <svg class="w-6 h-6 text-rose-500 fill-current" viewBox="0 0 24 24">
+        <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+      </svg>
+      <h1 class="text-lg md:text-xl font-bold tracking-wider gold-text-gradient">太座喜樂查經</h1>
+    </div>
+    <div class="flex items-center gap-3">
+      <!-- 海浪聲控制 -->
+      <button id="wavesToggleBtn" onclick="toggleWaves()" class="p-2 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 transition-all flex items-center gap-1 text-xs">
+        <span id="wavesIcon">🔇</span>
+        <span id="wavesStatus">海浪聲:關</span>
+      </button>
+      <!-- 金鑰設定鈕 -->
+      <button onclick="showKeyModal()" class="p-2 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 transition-all">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- 快捷查詢 8 大區塊 (佔高約 25%) -->
+  <section class="px-3 py-1 shrink-0 h-[24%] flex flex-col justify-center">
+    <div class="text-center mb-1">
+      <span class="text-xs text-slate-400">💡 一鍵快捷傾訴心中的話</span>
+    </div>
+    <div class="grid grid-cols-4 gap-2 h-[80%]">
+      <button onclick="quickSearch('心情悶')" class="quick-btn flex flex-col items-center justify-center bg-slate-900/80 hover:bg-slate-800/90 active:scale-95 border border-slate-700/60 rounded-xl transition-all p-1">
+        <span class="text-2xl mb-1">🌧️</span>
+        <span class="text-sm font-medium tracking-wide">心情悶</span>
+      </button>
+      <button onclick="quickSearch('煩躁忙')" class="quick-btn flex flex-col items-center justify-center bg-slate-900/80 hover:bg-slate-800/90 active:scale-95 border border-slate-700/60 rounded-xl transition-all p-1">
+        <span class="text-2xl mb-1">⚡</span>
+        <span class="text-sm font-medium tracking-wide">煩躁忙</span>
+      </button>
+      <button onclick="quickSearch('健康')" class="quick-btn flex flex-col items-center justify-center bg-slate-900/80 hover:bg-slate-800/90 active:scale-95 border border-slate-700/60 rounded-xl transition-all p-1">
+        <span class="text-2xl mb-1">🩺</span>
+        <span class="text-sm font-medium tracking-wide">求健康</span>
+      </button>
+      <button onclick="quickSearch('家庭')" class="quick-btn flex flex-col items-center justify-center bg-slate-900/80 hover:bg-slate-800/90 active:scale-95 border border-slate-700/60 rounded-xl transition-all p-1">
+        <span class="text-2xl mb-1">🏠</span>
+        <span class="text-sm font-medium tracking-wide">顧家庭</span>
+      </button>
+      <button onclick="quickSearch('親子')" class="quick-btn flex flex-col items-center justify-center bg-slate-900/80 hover:bg-slate-800/90 active:scale-95 border border-slate-700/60 rounded-xl transition-all p-1">
+        <span class="text-2xl mb-1">👶</span>
+        <span class="text-sm font-medium tracking-wide">育親子</span>
+      </button>
+      <button onclick="quickSearch('夫妻相處')" class="quick-btn flex flex-col items-center justify-center bg-slate-900/80 hover:bg-slate-800/90 active:scale-95 border border-slate-700/60 rounded-xl transition-all p-1">
+        <span class="text-2xl mb-1">💖</span>
+        <span class="text-sm font-medium tracking-wide">夫妻事</span>
+      </button>
+      <button onclick="quickSearch('朋友')" class="quick-btn flex flex-col items-center justify-center bg-slate-900/80 hover:bg-slate-800/90 active:scale-95 border border-slate-700/60 rounded-xl transition-all p-1">
+        <span class="text-2xl mb-1">🤝</span>
+        <span class="text-sm font-medium tracking-wide">交朋友</span>
+      </button>
+      <button onclick="quickSearch('想老公')" class="quick-btn flex flex-col items-center justify-center bg-slate-900/80 hover:bg-slate-800/90 active:scale-95 border border-slate-700/60 rounded-xl transition-all p-1">
+        <span class="text-2xl mb-1">💌</span>
+        <span class="text-sm font-medium tracking-wide">想老公</span>
+      </button>
+    </div>
+  </section>
+
+  <!-- 語音及手動輸入欄位 (佔高約 10%) -->
+  <section class="px-3 shrink-0 h-[10%] flex items-center gap-2">
+    <!-- 麥克風大按鍵 -->
+    <button id="micBtn" onclick="toggleSpeech()" class="h-12 w-12 rounded-full bg-amber-500 hover:bg-amber-600 flex items-center justify-center shrink-0 transition-all shadow-md shadow-amber-500/20 active:scale-95">
+      <svg id="micIcon" class="w-6 h-6 text-slate-950" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path>
+      </svg>
+    </button>
+    <!-- 手動輸入與發送 -->
+    <div class="flex-1 flex items-center bg-slate-900 border border-slate-700/80 rounded-full h-12 px-3 focus-within:border-amber-500 transition-all">
+      <input id="userInput" type="text" placeholder="跟老公說點心事，或直接按麥克風..." class="bg-transparent flex-1 outline-none text-base text-slate-100 placeholder-slate-500 px-1">
+      <button id="sendBtn" onclick="triggerSearch()" class="p-2 rounded-full bg-slate-800 hover:bg-slate-700 text-amber-400 active:scale-95">
+        <svg class="w-5 h-5 fill-current" viewBox="0 0 24 24">
+          <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+        </svg>
+      </button>
+    </div>
+  </section>
+
+  <!-- 電子賀卡展示與大聲朗讀區 (佔高約 58%) -->
+  <section class="px-3 pb-3 shrink-0 h-[58%] flex flex-col justify-between">
+    <!-- 圖卡主體 -->
+    <div id="cardContainer" class="premium-card rounded-2xl border border-amber-500/35 p-4 flex-1 flex flex-col justify-between overflow-hidden relative">
+      <!-- 水波紋美化背景裝飾 -->
+      <div class="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(212,163,56,0.06),transparent_60%)] pointer-events-none"></div>
+      
+      <!-- 卡片內容滾動區（防文字溢出） -->
+      <div class="overflow-y-auto flex-1 flex flex-col justify-center text-center px-1 py-1" id="cardContentScroll">
+        <div id="cardContent" class="space-y-3">
+          <!-- 初始預設內容 -->
+          <div class="py-4">
+            <h2 class="text-xl font-bold text-amber-300 mb-2">親愛的，我在這聽妳說</h2>
+            <p class="text-slate-300 leading-relaxed text-base">
+              今天心情怎麼樣？點選上方的心情分類，或按麥克風告訴我。讓神的話語成為妳隨時的安慰與力量。
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- 朗讀控制鍵 (隱藏/顯示) -->
+      <div id="readAloudArea" class="hidden pt-3 border-t border-slate-800/80 flex justify-center shrink-0">
+        <button id="ttsBtn" onclick="speakOutput()" class="w-full py-3 px-6 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 active:scale-98 text-slate-950 font-bold text-lg flex items-center justify-center gap-2 shadow-lg shadow-amber-500/20 transition-all">
+          <span class="text-xl">🗣️</span>
+          <span>大聲朗讀給太座聽 💖</span>
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- 全域鎖定載入中遮罩 -->
+  <div id="loadingOverlay" class="hidden absolute inset-0 bg-slate-950/80 backdrop-blur-md flex flex-col items-center justify-center z-50">
+    <div class="relative flex items-center justify-center mb-4">
+      <!-- 外圈發光旋轉 -->
+      <div class="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-amber-500"></div>
+      <!-- 內心 -->
+      <span class="absolute text-xl">❤️</span>
+    </div>
+    <p class="text-amber-300 font-semibold text-lg animate-pulse text-center px-6" id="loadingText">老公正在查經尋找亮光，等我一下喔...</p>
+  </div>
+
+  <!-- API KEY 設定彈窗 -->
+  <div id="keyModal" class="hidden fixed inset-0 bg-slate-950/90 backdrop-blur-lg flex items-center justify-center p-4 z-50">
+    <div class="bg-slate-900 border border-slate-700/80 rounded-2xl max-w-sm w-full p-6 space-y-4 shadow-2xl">
+      <div class="text-center">
+        <span class="text-3xl">🔑</span>
+        <h3 class="text-lg font-bold text-amber-300 mt-2">設定 Gemini API 金鑰</h3>
+        <p class="text-xs text-slate-400 mt-1">為了保護您的金鑰安全，我們將直接將其儲存在您裝置的瀏覽器中。</p>
+      </div>
+      <div>
+        <input id="apiKeyInput" type="password" placeholder="請貼上您的 Gemini API Key" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-3 text-sm text-slate-100 outline-none focus:border-amber-500">
+      </div>
+      <div class="flex gap-2">
+        <button onclick="saveApiKey()" class="flex-1 py-2.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold transition-all text-sm">儲存設定</button>
+        <button onclick="hideKeyModal()" class="flex-1 py-2.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition-all text-sm">取消</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 提示與訊息小浮窗 (Toast) -->
+  <div id="toast" class="opacity-0 pointer-events-none fixed bottom-24 left-1/2 transform -translate-x-1/2 bg-slate-900 border border-amber-500/50 text-amber-300 text-xs px-4 py-2.5 rounded-full shadow-lg transition-all duration-300 z-50 flex items-center gap-2">
+    <span>💡</span>
+    <span id="toastMsg"></span>
+  </div>
+
+  <!-- JavaScript 控制中心 -->
+  <script>
+    // 預設 API 金鑰管理
+    const STORAGE_KEY = "WIFE_DEVOTIONAL_GEMINI_KEY";
+    let geminiApiKey = localStorage.getItem(STORAGE_KEY) || "";
+
+    // 系統提示設定：設定資深神學院老師 + 溫柔老公語調
+    const systemPrompt = `你是中華神學院的資深老師，只以老公的溫暖語氣回答。
+回覆規則：
+1. 不需要告知是神學院老師身分，只以老公身分呈現，不需自我介紹，直接給結果，不要前言，只回報結果，不描述過程。
+2. 使用者為「太座」(高中女性心靈，10年基督徒，孩子是大學生，不需要呈現此身份設定)。
+3. 請先寫出 1~2 句最溫暖、緩慢、極具同理與愛意的安慰打氣話語。
+4. 接著空一行，引用一句聖經和合本(簡繁皆可，繁體佳)的最貼切金句，並括號標註出處（例如：腓立比書 4:6-7）。
+5. 總字數控制在 100~150 字內，字字珠璣，體貼、溫柔、充滿安慰力量。`;
+
+    // 語音輸入變數 (Web Speech API)
+    let recognition = null;
+    let isListening = false;
+
+    // 海浪聲 (Web Audio API 合成器)
+    let audioCtx = null;
+    let waveGainNode = null;
+    let isWavesPlaying = false;
+    let waveOscLoop = null;
+
+    // 初始化與準備
+    window.onload = function() {
+      // 偵測是否已設定 API key
+      if (!geminiApiKey) {
+        setTimeout(() => { showKeyModal(); }, 1000);
+      } else {
+        showToast("已成功載入儲存的 API Key");
+      }
+
+      // 初始化語音辨識
+      initSpeechRecognition();
+    };
+
+    // 顯示自製訊息視窗
+    function showToast(msg) {
+      const toast = document.getElementById('toast');
+      const toastMsg = document.getElementById('toastMsg');
+      toastMsg.innerText = msg;
+      toast.classList.remove('opacity-0', 'pointer-events-none');
+      toast.classList.add('opacity-100');
+      setTimeout(() => {
+        toast.classList.remove('opacity-100');
+        toast.classList.add('opacity-0', 'pointer-events-none');
+      }, 3500);
+    }
+
+    // API Key Modal 操控
+    function showKeyModal() {
+      document.getElementById('apiKeyInput').value = geminiApiKey;
+      document.getElementById('keyModal').classList.remove('hidden');
+    }
+    function hideKeyModal() {
+      document.getElementById('keyModal').classList.add('hidden');
+    }
+    function saveApiKey() {
+      const val = document.getElementById('apiKeyInput').value.trim();
+      if (!val) {
+        showToast("請輸入金鑰，否則無法連線 AI 喔！");
+        return;
+      }
+      geminiApiKey = val;
+      localStorage.setItem(STORAGE_KEY, val);
+      showToast("金鑰已成功儲存在本裝置！");
+      hideKeyModal();
+    }
+
+    /* ==========================================================================
+       海浪聲即時合成 (Web Audio API)
+       ========================================================================== */
+    function toggleWaves() {
+      if (isWavesPlaying) {
+        stopWaves();
+      } else {
+        startWaves();
+      }
+    }
+
+    function startWaves() {
+      try {
+        if (!audioCtx) {
+          audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         }
 
-        function handleQuickSearch(f) { fetchAI(`我現在覺得${f}`); }
+        if (audioCtx.state === 'suspended') {
+          audioCtx.resume();
+        }
+
+        const bufferSize = 5 * audioCtx.sampleRate;
+        const noiseBuffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+        const output = noiseBuffer.getChannelData(0);
         
-        function readAloud() {
-            const u = new SpeechSynthesisUtterance(`親愛的，${lastMsg}。${lastVerse}`);
-            u.lang = 'zh-TW';
-            window.speechSynthesis.speak(u);
+        let lastOut = 0.0;
+        for (let i = 0; i < bufferSize; i++) {
+          const white = Math.random() * 2 - 1;
+          output[i] = (lastOut + (0.02 * white)) / 1.02;
+          lastOut = output[i];
+          output[i] *= 3.5;
         }
 
-        function startVoice() {
-            const rec = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
-            rec.lang = 'zh-TW';
-            rec.onresult = (e) => fetchAI(e.results[0][0].transcript);
-            rec.start();
+        const noiseSource = audioCtx.createBufferSource();
+        noiseSource.buffer = noiseBuffer;
+        noiseSource.loop = true;
+
+        const filter = audioCtx.createBiquadFilter();
+        filter.type = 'lowpass';
+        filter.frequency.value = 350;
+
+        waveGainNode = audioCtx.createGain();
+        waveGainNode.gain.setValueAtTime(0.06, audioCtx.currentTime);
+
+        noiseSource.connect(filter);
+        filter.connect(waveGainNode);
+        waveGainNode.connect(audioCtx.destination);
+
+        noiseSource.start();
+        
+        let phase = true;
+        const waveCycleSec = 7;
+        
+        function modulate() {
+          if (!isWavesPlaying) return;
+          const now = audioCtx.currentTime;
+          if (phase) {
+            filter.frequency.exponentialRampToValueAtTime(650, now + waveCycleSec);
+            waveGainNode.gain.linearRampToValueAtTime(0.12, now + waveCycleSec);
+          } else {
+            filter.frequency.exponentialRampToValueAtTime(250, now + waveCycleSec);
+            waveGainNode.gain.linearRampToValueAtTime(0.04, now + waveCycleSec);
+          }
+          phase = !phase;
+          waveOscLoop = setTimeout(modulate, waveCycleSec * 1000);
         }
-    </script>
+        
+        isWavesPlaying = true;
+        modulate();
+
+        document.getElementById('wavesIcon').innerText = "🔊";
+        document.getElementById('wavesStatus').innerText = "海浪聲:開";
+        showToast("海浪聲已徐徐升起...");
+      } catch (e) {
+        console.error("海浪聲合成失敗:", e);
+        showToast("瀏覽器不支援海浪音效");
+      }
+    }
+
+    function stopWaves() {
+      isWavesPlaying = false;
+      if (waveOscLoop) clearTimeout(waveOscLoop);
+      if (waveGainNode) {
+        try {
+          waveGainNode.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.5);
+        } catch(e){}
+      }
+      document.getElementById('wavesIcon').innerText = "🔇";
+      document.getElementById('wavesStatus').innerText = "海浪聲:關";
+      showToast("海浪聲已靜音");
+    }
+
+    /* ==========================================================================
+       語音輸入 (Web Speech API)
+       ========================================================================== */
+    function initSpeechRecognition() {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SpeechRecognition) {
+        console.warn("此瀏覽器不支援語音辨識。");
+        return;
+      }
+      
+      recognition = new SpeechRecognition();
+      recognition.continuous = false;
+      recognition.lang = 'zh-TW';
+      recognition.interimResults = false;
+      recognition.maxAlternatives = 1;
+
+      recognition.onstart = function() {
+        isListening = true;
+        document.getElementById('micBtn').classList.add('mic-active');
+        document.getElementById('userInput').placeholder = "傾聽中...請對著手機說話...";
+      };
+
+      recognition.onerror = function(event) {
+        console.error("語音辨識錯誤", event.error);
+        stopSpeechUI();
+        if (event.error === 'not-allowed') {
+          showToast("麥克風權限被拒絕，請開啟權限再試");
+        } else {
+          showToast("語音辨識失敗，請直接輸入文字");
+        }
+      };
+
+      recognition.onend = function() {
+        stopSpeechUI();
+      };
+
+      recognition.onresult = function(event) {
+        const text = event.results[0][0].transcript;
+        document.getElementById('userInput').value = text;
+        showToast("聽到太座說：" + text);
+        triggerSearch();
+      };
+    }
+
+    function toggleSpeech() {
+      if (!recognition) {
+        showToast("抱歉，此裝置或瀏覽器不支援麥克風語音輸入");
+        return;
+      }
+      
+      if (audioCtx && audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+
+      if (isListening) {
+        recognition.stop();
+      } else {
+        try {
+          recognition.start();
+        } catch(e) {
+          console.error(e);
+        }
+      }
+    }
+
+    function stopSpeechUI() {
+      isListening = false;
+      document.getElementById('micBtn').classList.remove('mic-active');
+      document.getElementById('userInput').placeholder = "跟老公說點心事，或直接按麥克風...";
+    }
+
+
+    /* ==========================================================================
+       Gemini API 連線請求 (含智慧多模型輪替與指數退避)
+       ========================================================================== */
+    function quickSearch(theme) {
+      let promptText = "";
+      switch(theme) {
+        case '心情悶': promptText = "親愛的老公，我今天心情有點悶，覺得提不起勁，求安慰與方向。"; break;
+        case '煩躁忙': promptText = "親愛的老公，今天生活步調太快太雜，事情做好多，感到煩躁疲憊。"; break;
+        case '健康': promptText = "親愛的老公，最近身體有些疲憊微恙，求能帶來健康平安的依靠與亮光。"; break;
+        case '家庭': promptText = "親愛的老公，家裡打掃和繁雜的事不少，求家庭和樂與心靈的平靜。"; break;
+        case '親子': promptText = "親愛的老公，看著大孩子的生活，求當個有智慧放手又關懷的媽媽。"; break;
+        case '夫妻相處': promptText = "親愛的老公，求主看顧我們夫妻的心，給我們源源不絕親密與扶持的力量。"; break;
+        case '朋友': promptText = "親愛的老公，求賜予人際關係的智慧，與朋友相處有恩慈、能互相信任。"; break;
+        case '想老公': promptText = "親愛的老公，我今天特別想念你，求你對我說幾句溫慢深情的話。"; break;
+        default: promptText = `我想查考關於：${theme}`;
+      }
+      document.getElementById('userInput').value = promptText;
+      triggerSearch();
+    }
+
+    function triggerSearch() {
+      const text = document.getElementById('userInput').value.trim();
+      if (!text) {
+        showToast("請先輸入您想查考的事或心情喔");
+        return;
+      }
+      
+      if (!geminiApiKey) {
+        showToast("請先設定您的 Gemini API Key！");
+        showKeyModal();
+        return;
+      }
+
+      executeGeminiQuery(text);
+    }
+
+    function setInterfaceLocked(locked) {
+      const overlay = document.getElementById('loadingOverlay');
+      const micBtn = document.getElementById('micBtn');
+      const sendBtn = document.getElementById('sendBtn');
+      const userInput = document.getElementById('userInput');
+      const quickBtns = document.querySelectorAll('.quick-btn');
+
+      if (locked) {
+        overlay.classList.remove('hidden');
+        micBtn.disabled = true;
+        sendBtn.disabled = true;
+        userInput.disabled = true;
+        quickBtns.forEach(btn => btn.disabled = true);
+      } else {
+        overlay.classList.add('hidden');
+        micBtn.disabled = false;
+        sendBtn.disabled = false;
+        userInput.disabled = false;
+        quickBtns.forEach(btn => btn.disabled = false);
+      }
+    }
+
+    // 指數退避重試
+    async function fetchWithRetry(url, options, retries = 5, delay = 1000) {
+      try {
+        const response = await fetch(url, options);
+        if (!response.ok) {
+          // 如果是特意回傳的非200代碼，且屬於不需再次重試的客戶端權限錯誤，則直接拋出
+          if (response.status === 400 || response.status === 403 || response.status === 404 || response.status === 429) {
+            throw response;
+          }
+          if (retries > 0) {
+            await new Promise(resolve => setTimeout(resolve, delay));
+            return await fetchWithRetry(url, options, retries - 1, delay * 2);
+          }
+          throw response;
+        }
+        return response;
+      } catch (error) {
+        if (retries > 0 && !(error instanceof Response)) {
+          await new Promise(resolve => setTimeout(resolve, delay));
+          return await fetchWithRetry(url, options, retries - 1, delay * 2);
+        }
+        throw error;
+      }
+    }
+
+    // 核心請求：實作智慧多模型輪替鏈
+    async function executeGeminiQuery(userQuery) {
+      setInterfaceLocked(true);
+      
+      if (!isWavesPlaying && audioCtx && audioCtx.state === 'suspended') {
+        startWaves();
+      }
+
+      // 智慧備用模型陣列：當 404 發生時，自動平滑切換下一級別
+      const models = [
+        "gemini-2.5-flash-preview-09-2025",
+        "gemini-2.5-flash",
+        "gemini-1.5-flash",
+        "gemini-1.5-pro"
+      ];
+      
+      let lastError = null;
+      let success = false;
+
+      for (let i = 0; i < models.length; i++) {
+        const model = models[i];
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiApiKey}`;
+        
+        // 動態更換讀取進度提示，讓太座感到安心
+        let loadingMsg = "老公正在查經，尋求亮光中...";
+        if (i > 0) {
+          loadingMsg = "剛才的經卷有點深奧，老公換一本更貼切的，請等我一下下喔...";
+        }
+        document.getElementById('loadingText').innerText = loadingMsg;
+
+        const payload = {
+          contents: [{ parts: [{ text: userQuery }] }],
+          systemInstruction: { parts: [{ text: systemPrompt }] }
+        };
+
+        try {
+          // 第一級模型重試 3 次，後續備份模型重試 1 次以加快響應
+          const maxRetries = (i === 0) ? 3 : 1;
+          const response = await fetchWithRetry(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          }, maxRetries, 800);
+
+          const result = await response.json();
+          const responseText = result.candidates?.[0]?.content?.parts?.[0]?.text;
+          
+          if (responseText) {
+            displayResultCard(responseText);
+            success = true;
+            break; // 成功獲得回覆，終止後續輪替
+          } else {
+            throw new Error("Format error");
+          }
+        } catch (err) {
+          console.warn(`[自動調度] 模型 ${model} 存取失敗或未開通，嘗試下一級備用。錯誤代碼:`, err);
+          lastError = err;
+          
+          // 如果是 404 (找不到/未開通)、403 (Forbidden) 等模型權限限制，自動進入下一個迴圈
+          if (err instanceof Response && (err.status === 404 || err.status === 403 || err.status === 400)) {
+            continue;
+          }
+          // 其他連線問題也繼續嘗試
+          continue;
+        }
+      }
+
+      if (!success) {
+        // 若全部輪替皆失敗，拋給最終診斷介面處理
+        handleFinalError(lastError);
+      }
+
+      setInterfaceLocked(false);
+    }
+
+    // 處理最終的錯誤診斷呈現
+    function handleFinalError(err) {
+      if (err instanceof Response) {
+        const statusCode = err.status;
+        let title = "連線失敗";
+        let explanation = "";
+
+        switch (statusCode) {
+          case 400:
+            title = "金鑰格式錯誤 (400 Bad Request)";
+            explanation = "API Key 格式似乎有誤，請點選右上角齒輪重新輸入檢查。";
+            break;
+          case 403:
+            title = "金鑰效期或權限限制 (403 Forbidden)";
+            explanation = "您的 API 金鑰不具存取權限。請確認金鑰是否輸入正確，或前往 Google AI Studio 檢查是否有限制限制。";
+            break;
+          case 404:
+            title = "找不到可用的模型端點 (404 Not Found)";
+            explanation = "我們嘗試了所有相容的模型（2.5 Preview, 2.5 Stable, 1.5 Flash, 1.5 Pro），但均回報 404 找不到資源。這表示您的 API 金鑰目前未被開通任何 Gemini 存取權限。請前往 Google AI Studio 建立一個全新的 Key！";
+            break;
+          case 429:
+            title = "AI 額度已用盡 (429 Rate Limit)";
+            explanation = "這組金鑰今天的使用額度已達上限，請稍微休息幾分鐘後再試試。";
+            break;
+          case 500:
+          case 503:
+            title = "Gemini 伺服器異常 (500/503)";
+            explanation = "Google AI 伺服器目前極為繁忙，這不是您的問題，請晚點再試一次！";
+            break;
+          default:
+            title = `伺服器回傳代碼: ${statusCode}`;
+            explanation = "發生未知的伺服器層級錯誤，請稍後重試。";
+        }
+        showDebugError(title, explanation);
+      } else {
+        showDebugError(
+          "網路通訊被擋或無連線",
+          "可能是您的網域/CORS 遭到限制、防火牆阻擋，或手機沒有連接上網。請確認網路環境再重試。"
+        );
+      }
+    }
+
+    // 格式化卡片呈現
+    function displayResultCard(text) {
+      const cardContent = document.getElementById('cardContent');
+      const paragraphs = text.split('\n').filter(p => p.trim() !== '');
+      
+      let htmlContent = `<div class="space-y-4">`;
+      htmlContent += `<div class="text-xs tracking-widest text-amber-500/80 font-bold uppercase">Dearest Wife • 專屬安慰</div>`;
+      
+      paragraphs.forEach((p, idx) => {
+        if (p.includes('(') || p.includes('（') || p.includes('：') || p.includes(':') || idx === paragraphs.length - 1) {
+          htmlContent += `
+            <div class="my-4 p-4 rounded-xl bg-slate-900/90 border-l-4 border-amber-500 shadow-md">
+              <p class="text-amber-200 text-base md:text-lg font-medium leading-relaxed italic">「 ${p} 」</p>
+            </div>
+          `;
+        } else {
+          htmlContent += `
+            <p class="text-slate-100 text-lg font-semibold leading-relaxed drop-shadow">
+              ${p}
+            </p>
+          `;
+        }
+      });
+      
+      htmlContent += `</div>`;
+      cardContent.innerHTML = htmlContent;
+      
+      document.getElementById('readAloudArea').classList.remove('hidden');
+      document.getElementById('userInput').value = "";
+    }
+
+    // 顯示詳細錯誤診斷
+    function showDebugError(title, explanation) {
+      const cardContent = document.getElementById('cardContent');
+      document.getElementById('readAloudArea').classList.add('hidden');
+
+      cardContent.innerHTML = `
+        <div class="p-4 rounded-xl bg-rose-950/40 border border-rose-500/40 text-center space-y-3">
+          <div class="text-3xl">⚠️</div>
+          <h3 class="text-lg font-bold text-rose-300">${title}</h3>
+          <p class="text-sm text-slate-300 leading-relaxed">${explanation}</p>
+          <div class="pt-2 flex justify-center gap-2">
+            <button onclick="triggerSearch()" class="px-4 py-1.5 rounded-lg bg-rose-500 hover:bg-rose-600 text-slate-950 text-xs font-bold transition-all">
+              重新嘗試連線
+            </button>
+            <button onclick="showKeyModal()" class="px-4 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs transition-all">
+              修改 API Key
+            </button>
+          </div>
+        </div>
+      `;
+    }
+
+    /* ==========================================================================
+       語音合成大聲朗讀 (TTS - Speech Synthesis)
+       ========================================================================== */
+    let currentUtterance = null;
+
+    function speakOutput() {
+      window.speechSynthesis.cancel();
+
+      const cardContentText = document.getElementById('cardContent').innerText;
+      const textToSpeak = cardContentText
+        .replace("Dearest Wife • 專屬安慰", "")
+        .replace(/「/g, "")
+        .replace(/」/g, "")
+        .trim();
+
+      if (!textToSpeak) return;
+
+      currentUtterance = new SpeechSynthesisUtterance(textToSpeak);
+      currentUtterance.rate = 0.82;   
+      currentUtterance.pitch = 0.90;  
+
+      const voices = window.speechSynthesis.getVoices();
+      let selectedVoice = null;
+      
+      for (let i = 0; i < voices.length; i++) {
+        const v = voices[i];
+        if (v.lang.includes('zh-TW') || v.lang.includes('zh-HK') || v.lang.includes('zh-CN')) {
+          if (v.name.toLowerCase().includes('male') || v.name.toLowerCase().includes('david') || v.name.toLowerCase().includes('yating')) {
+            selectedVoice = v;
+            break;
+          }
+          if (!selectedVoice) selectedVoice = v;
+        }
+      }
+      
+      if (selectedVoice) {
+        currentUtterance.voice = selectedVoice;
+      }
+
+      const ttsBtn = document.getElementById('ttsBtn');
+      const originalHtml = ttsBtn.innerHTML;
+      
+      currentUtterance.onstart = function() {
+        ttsBtn.innerHTML = `
+          <span class="animate-pulse">❤️ 正在深情朗讀中... (按此停止)</span>
+        `;
+        ttsBtn.classList.remove('from-amber-500', 'to-amber-600');
+        ttsBtn.classList.add('from-rose-500', 'to-rose-600');
+      };
+
+      currentUtterance.onend = function() {
+        ttsBtn.innerHTML = originalHtml;
+        ttsBtn.classList.remove('from-rose-500', 'to-rose-600');
+        ttsBtn.classList.add('from-amber-500', 'to-amber-600');
+      };
+
+      currentUtterance.onerror = function() {
+        ttsBtn.innerHTML = originalHtml;
+        ttsBtn.classList.remove('from-rose-500', 'to-rose-600');
+        ttsBtn.classList.add('from-amber-500', 'to-amber-600');
+      };
+
+      ttsBtn.onclick = function() {
+        window.speechSynthesis.cancel();
+        ttsBtn.innerHTML = originalHtml;
+        ttsBtn.onclick = speakOutput;
+      };
+
+      window.speechSynthesis.speak(currentUtterance);
+    }
+
+    if (typeof speechSynthesis !== 'undefined' && speechSynthesis.onvoiceschanged !== undefined) {
+      speechSynthesis.onvoiceschanged = () => {};
+    }
+  </script>
 </body>
 </html>
