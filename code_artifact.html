@@ -2,7 +2,7 @@
 <html lang="zh-TW">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>太座喜樂查經介面</title>
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -40,6 +40,11 @@
       font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
     }
     
+    /* 解決行動端 300ms 點擊延遲，確保按鈕反應即時 */
+    button, .quick-btn {
+      touch-action: manipulation;
+    }
+
     /* 麥克風錄音動態呼吸效果 */
     @keyframes pulse-mic {
       0%, 100% { transform: scale(1); box-shadow: 0 0 12px rgba(239, 68, 68, 0.4); }
@@ -74,6 +79,24 @@
       position: absolute;
       width: 100%;
       height: 100%;
+    }
+
+    /* 【手機版優先優化】當虛擬鍵盤彈出或小螢幕（高度小於 680px）時，自動等比例縮減按鈕與間距，防止輸入框被擠出螢幕外 */
+    @media (max-height: 680px) {
+      .quick-btn {
+        height: 3.25rem !important; /* 原本 h-14 降為約 h-12 */
+        padding: 0.5rem !important;
+        border-radius: 0.875rem !important;
+      }
+      .quick-btn span {
+        font-size: 0.825rem !important;
+      }
+      .quick-btn .text-2xl {
+        font-size: 1.25rem !important;
+      }
+      #searchScreen .min-h-\\[260px\\] {
+        min-h-[220px] !important;
+      }
     }
   </style>
 </head>
@@ -111,35 +134,35 @@
         
         <!-- 巨型自適應按鈕網格 (限制最小高度防止鍵盤彈出時過度壓縮) -->
         <div class="grid grid-cols-2 gap-3 max-w-md mx-auto w-full px-1 min-h-[260px]">
-          <button onclick="quickSearch('心情悶')" class="quick-btn h-14 flex items-center gap-3 bg-slate-900/95 hover:bg-slate-850 border border-slate-700/60 rounded-2xl p-3 active:scale-95 transition-all">
+          <button onclick="quickSearch('心情悶')" class="quick-btn h-14 flex items-center gap-3 bg-slate-900/95 hover:bg-slate-800 border border-slate-700/60 rounded-2xl p-3 active:scale-95 transition-all">
             <span class="text-2xl">🌧️</span>
             <span class="text-sm font-bold text-slate-100">心情有些悶</span>
           </button>
-          <button onclick="quickSearch('煩躁忙')" class="quick-btn h-14 flex items-center gap-3 bg-slate-900/95 hover:bg-slate-850 border border-slate-700/60 rounded-2xl p-3 active:scale-95 transition-all">
+          <button onclick="quickSearch('煩躁忙')" class="quick-btn h-14 flex items-center gap-3 bg-slate-900/95 hover:bg-slate-800 border border-slate-700/60 rounded-2xl p-3 active:scale-95 transition-all">
             <span class="text-2xl">⚡</span>
             <span class="text-sm font-bold text-slate-100">感到煩躁忙</span>
           </button>
-          <button onclick="quickSearch('健康')" class="quick-btn h-14 flex items-center gap-3 bg-slate-900/95 hover:bg-slate-850 border border-slate-700/60 rounded-2xl p-3 active:scale-95 transition-all">
+          <button onclick="quickSearch('健康')" class="quick-btn h-14 flex items-center gap-3 bg-slate-900/95 hover:bg-slate-800 border border-slate-700/60 rounded-2xl p-3 active:scale-95 transition-all">
             <span class="text-2xl">🩺</span>
             <span class="text-sm font-bold text-slate-100">求身體健康</span>
           </button>
-          <button onclick="quickSearch('家庭')" class="quick-btn h-14 flex items-center gap-3 bg-slate-900/95 hover:bg-slate-850 border border-slate-700/60 rounded-2xl p-3 active:scale-95 transition-all">
+          <button onclick="quickSearch('家庭')" class="quick-btn h-14 flex items-center gap-3 bg-slate-900/95 hover:bg-slate-800 border border-slate-700/60 rounded-2xl p-3 active:scale-95 transition-all">
             <span class="text-2xl">🏠</span>
             <span class="text-sm font-bold text-slate-100">求家庭和樂</span>
           </button>
-          <button onclick="quickSearch('親子')" class="quick-btn h-14 flex items-center gap-3 bg-slate-900/95 hover:bg-slate-850 border border-slate-700/60 rounded-2xl p-3 active:scale-95 transition-all">
+          <button onclick="quickSearch('親子')" class="quick-btn h-14 flex items-center gap-3 bg-slate-900/95 hover:bg-slate-800 border border-slate-700/60 rounded-2xl p-3 active:scale-95 transition-all">
             <span class="text-2xl">👶</span>
             <span class="text-sm font-bold text-slate-100">育親子智慧</span>
           </button>
-          <button onclick="quickSearch('夫妻相處')" class="quick-btn h-14 flex items-center gap-3 bg-slate-900/95 hover:bg-slate-850 border border-slate-700/60 rounded-2xl p-3 active:scale-95 transition-all">
+          <button onclick="quickSearch('夫妻相處')" class="quick-btn h-14 flex items-center gap-3 bg-slate-900/95 hover:bg-slate-800 border border-slate-700/60 rounded-2xl p-3 active:scale-95 transition-all">
             <span class="text-2xl">💖</span>
             <span class="text-sm font-bold text-slate-100">談夫妻相處</span>
           </button>
-          <button onclick="quickSearch('朋友')" class="quick-btn h-14 flex items-center gap-3 bg-slate-900/95 hover:bg-slate-850 border border-slate-700/60 rounded-2xl p-3 active:scale-95 transition-all">
+          <button onclick="quickSearch('朋友')" class="quick-btn h-14 flex items-center gap-3 bg-slate-900/95 hover:bg-slate-800 border border-slate-700/60 rounded-2xl p-3 active:scale-95 transition-all">
             <span class="text-2xl">🤝</span>
             <span class="text-sm font-bold text-slate-100">交朋友互動</span>
           </button>
-          <button onclick="quickSearch('想老公')" class="quick-btn h-14 flex items-center gap-3 bg-slate-900/95 hover:bg-slate-850 border border-slate-700/60 rounded-2xl p-3 active:scale-95 transition-all">
+          <button onclick="quickSearch('想老公')" class="quick-btn h-14 flex items-center gap-3 bg-slate-900/95 hover:bg-slate-800 border border-slate-700/60 rounded-2xl p-3 active:scale-95 transition-all">
             <span class="text-2xl">💌</span>
             <span class="text-sm font-bold text-slate-100">今天想老公</span>
           </button>
@@ -244,9 +267,14 @@
   </div>
 
   <script>
-    // 固定的本機儲存 Key
+    // 固定的本機儲存 Key (利用 try-catch 安全防護避免 sandbox 安全限制時網頁崩潰)
     const STORAGE_KEY = "WIFE_DEVOTIONAL_GEMINI_KEY";
-    let geminiApiKey = localStorage.getItem(STORAGE_KEY) || "";
+    let geminiApiKey = "";
+    try {
+      geminiApiKey = localStorage.getItem(STORAGE_KEY) || "";
+    } catch (e) {
+      console.warn("本機 LocalStorage 被瀏覽器安全阻擋，降級改用記憶體暫存模式:", e);
+    }
 
     // 內部提示詞：資深神學院背景老公
     const systemPrompt = `你是中華神學院的資深教授老師，此時你只扮演最體貼溫柔的老公。
@@ -379,7 +407,7 @@
         isManualCancel = true; // 鎖定狀態：防止中途結束被當成說話結束
         if (recognition) {
           try {
-            recognition.abort(); // 強制放棄硬體，並釋放
+            recognition.abort(); // 強制放棄錄音硬體並釋放
           } catch(e) {}
         }
         stopSpeechUI();
@@ -444,7 +472,7 @@
       setInterfaceLocked(true);
       window.speechSynthesis.cancel();
 
-      // 【極致相容性輪替鏈】優先度：1.5-flash (超廣泛適用) ➔ 2.5-flash (穩定第一) ➔ 1.5-pro (深度備案)
+      // 【極致相容性模型輪替鏈】優先度：1.5-flash (超廣泛適用，幾乎 100% 免費不卡 404) ➔ 2.5-flash (穩定第二) ➔ 1.5-pro (深度備案)
       const models = [
         "gemini-1.5-flash",
         "gemini-2.5-flash",
@@ -695,6 +723,15 @@
       executeGeminiQuery(text);
     }
 
+    function showKeyModal() {
+      document.getElementById('apiKeyInput').value = geminiApiKey;
+      document.getElementById('keyModal').classList.remove('hidden');
+    }
+
+    function hideKeyModal() {
+      document.getElementById('keyModal').classList.add('hidden');
+    }
+
     function saveApiKey() {
       const val = document.getElementById('apiKeyInput').value.trim();
       if (!val) {
@@ -702,8 +739,12 @@
         return;
       }
       geminiApiKey = val;
-      localStorage.setItem(STORAGE_KEY, val);
-      showToast("金鑰儲存成功！同裝置更新不需重新輸入。");
+      try {
+        localStorage.setItem(STORAGE_KEY, val);
+        showToast("金鑰儲存成功！同裝置更新不需重新輸入。");
+      } catch (e) {
+        showToast("⚠️ 瀏覽器阻擋儲存空間，金鑰已改用單次工作階段記憶體暫存。");
+      }
       checkKeyBadge();
       hideKeyModal();
     }
@@ -721,6 +762,11 @@
         .trim();
 
       if (!textToSpeak) return;
+
+      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+      if (isIOS) {
+        showToast("💡 提示：若無聲音，請確認 iPhone 側邊的靜音開關是否關閉，並調高音量喔！");
+      }
 
       currentUtterance = new SpeechSynthesisUtterance(textToSpeak);
       currentUtterance.rate = 0.80;   
@@ -751,7 +797,7 @@
         ttsBtn.innerHTML = `
           <span class="animate-pulse">❤️ 老公正深情朗讀中... (點此停止)</span>
         `;
-        ttsBtn.classList.remove('from-amber-500', 'to-amber-600');
+        ttsBtn.classList.remove('from-amber-500', 'from-amber-600');
         ttsBtn.classList.add('from-rose-500', 'to-rose-600');
       };
 
