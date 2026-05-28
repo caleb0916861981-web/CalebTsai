@@ -14,12 +14,12 @@
 </head>
 <body class="h-full flex flex-col items-center justify-center p-4">
 
-    <!-- 設定頁：輸入與儲存 -->
+    <!-- 設定頁 -->
     <div id="setup-view" class="w-full max-w-sm text-center">
         <h1 class="text-2xl font-bold mb-6 text-pink-400">親愛的玲玲，平安</h1>
-        <p class="mb-4 text-gray-400 text-sm">請輸入新的 API Key 以恢復連線</p>
-        <input type="password" id="api-key" placeholder="貼上 API Key" class="w-full p-4 rounded-lg bg-gray-800 border border-gray-600 mb-4 text-white">
-        <button onclick="saveApiKey()" class="w-full py-4 bg-pink-600 rounded-lg font-bold text-lg text-white">儲存並開始使用</button>
+        <p class="mb-4 text-xs text-gray-500">若 API Key 失效，請在此更新</p>
+        <input type="password" id="api-key" placeholder="請貼上最新的 Gemini API Key" class="w-full p-4 rounded-lg bg-gray-800 border border-gray-600 mb-4 text-white">
+        <button onclick="saveApiKey()" class="w-full py-4 bg-pink-600 rounded-lg font-bold text-lg text-white">開始使用</button>
     </div>
 
     <!-- 主選單 -->
@@ -35,9 +35,8 @@
             <button onclick="askAI('朋友')" class="p-4 bg-gray-800 rounded-xl">朋友</button>
             <button onclick="askAI('想老公')" class="p-4 bg-gray-800 rounded-xl">想老公</button>
         </div>
-        <button onclick="startVoice()" class="w-full py-6 bg-blue-600 rounded-2xl font-bold text-xl text-white">🎤 語音輸入</button>
-        <!-- 方便重設的按鈕 -->
-        <button onclick="resetApiKey()" class="w-full py-2 text-gray-500 text-sm underline">更換 API Key</button>
+        <button id="mic-btn" onclick="startVoice()" class="w-full py-6 bg-blue-600 rounded-2xl font-bold text-xl text-white">🎤 語音輸入</button>
+        <button onclick="localStorage.removeItem('gemini_key'); location.reload();" class="text-gray-600 text-sm underline mt-2">重設 API Key</button>
     </div>
 
     <!-- 結果頁 -->
@@ -55,24 +54,9 @@
     <script>
         const TARGET_MODEL = "gemini-3.5-flash";
 
-        // 儲存 Key
         function saveApiKey() {
             const key = document.getElementById('api-key').value.trim();
-            if(key) { 
-                localStorage.setItem('gemini_key', key); 
-                alert("API Key 已儲存成功！");
-                showMain(); 
-            } else {
-                alert("請輸入有效的 API Key");
-            }
-        }
-
-        // 清除 Key 並重載
-        function resetApiKey() {
-            if(confirm("確定要更換 API Key 嗎？")) {
-                localStorage.removeItem('gemini_key');
-                location.reload();
-            }
+            if(key) { localStorage.setItem('gemini_key', key); showMain(); }
         }
 
         function showMain() {
@@ -83,15 +67,15 @@
 
         async function askAI(query) {
             const key = localStorage.getItem('gemini_key');
-            if(!key) { alert("找不到 API Key，請先設定"); resetApiKey(); return; }
-
+            if(!key) { alert("請先設定 API Key"); return; }
+            
             const contentDiv = document.getElementById('result-content');
             const btns = document.querySelectorAll('button');
             
             btns.forEach(b => b.disabled = true);
             document.getElementById('main-view').classList.add('hidden');
             document.getElementById('result-view').classList.remove('hidden');
-            contentDiv.innerHTML = `<div class="text-center"><div class="loading-spinner mx-auto my-4"></div><p>老公正在連線天父的愛...</p></div>`;
+            contentDiv.innerHTML = `<div class="text-center"><div class="loading-spinner mx-auto my-4"></div><p>老公正在連線...</p></div>`;
 
             try {
                 const url = `https://generativelanguage.googleapis.com/v1beta/models/${TARGET_MODEL}:generateContent?key=${key}`;
@@ -104,42 +88,44 @@
                 });
 
                 const data = await response.json();
-                
-                if (data.error) {
-                    throw new Error(JSON.stringify(data.error));
-                }
+                if (data.error) throw new Error(data.error.message);
                 
                 contentDiv.innerText = data.candidates[0].content.parts[0].text;
             } catch (err) {
-                contentDiv.innerHTML = `<div class="text-red-400 p-4 border border-red-800 rounded bg-red-900/20">
-                    <strong>連線失敗：</strong><br><pre class="text-xs overflow-x-auto">${err.message}</pre><br><br>
-                    <strong>建議：</strong>如果錯誤包含 API_KEY_INVALID，請點擊下方的「更換 API Key」按鈕輸入新 Key。</div>`;
+                contentDiv.innerHTML = `<div class="text-red-400">連線錯誤：${err.message}<br><br>若出現 API_KEY_INVALID，請點擊下方的「重設 API Key」更新。</div>`;
             } finally {
                 btns.forEach(b => b.disabled = false);
             }
         }
 
         function startVoice() {
+            // 每次重新建立實例，解決 iPhone 舊實例鎖死問題
             const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-            if (!SpeechRecognition) { alert("此裝置不支援語音辨識"); return; }
+            if (!SpeechRecognition) { alert("此設備不支援語音辨識，請確保使用 HTTPS 環境"); return; }
+            
             const rec = new SpeechRecognition();
             rec.lang = 'zh-TW';
             rec.onresult = (e) => askAI(e.results[0][0].transcript);
+            rec.onerror = (e) => alert("語音辨識失敗 (可能原因: 無麥克風權限或非 HTTPS 連線)");
             rec.start();
         }
 
         function speakResult() {
             window.speechSynthesis.cancel();
             const msg = new SpeechSynthesisUtterance(document.getElementById('result-content').innerText);
+            
+            // 嘗試尋找低沉男性語音
+            const voices = window.speechSynthesis.getVoices();
+            const maleVoice = voices.find(v => v.lang.includes('zh-TW') && (v.name.includes('Male') || v.name.includes('男')));
+            if(maleVoice) msg.voice = maleVoice;
+
             msg.lang = 'zh-TW';
-            msg.rate = 0.8;
+            msg.rate = 0.7; // 較慢
+            msg.pitch = 0.8; // 較低沉
             window.speechSynthesis.speak(msg);
         }
 
-        // 頁面載入時檢查是否已有 Key
-        if (localStorage.getItem('gemini_key')) {
-            showMain();
-        }
+        if (localStorage.getItem('gemini_key')) showMain();
     </script>
 </body>
 </html>
