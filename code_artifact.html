@@ -1,435 +1,145 @@
-```html id="v8jyr0"
 <!DOCTYPE html>
-<html lang="zh-Hant">
+<html lang="zh-Hant-TW" class="h-full">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport"
-content="width=device-width,initial-scale=1,maximum-scale=1">
-
-<title>太座 喜樂查經</title>
-
-<style>
-html,body{
-margin:0;
-padding:0;
-width:100%;
-height:100%;
-overflow:hidden;
-background:#111827;
-font-family:
-"PingFang TC",
-"Microsoft JhengHei",
-sans-serif;
-color:white;
-}
-
-body{
-display:flex;
-justify-content:center;
-align-items:center;
-}
-
-.page{
-width:100vw;
-height:100vh;
-padding:16px;
-box-sizing:border-box;
-display:flex;
-flex-direction:column;
-gap:12px;
-}
-
-.title{
-text-align:center;
-font-size:32px;
-font-weight:900;
-color:#fbbf24;
-}
-
-.grid{
-display:grid;
-grid-template-columns:1fr 1fr;
-gap:10px;
-}
-
-.btn{
-border:none;
-border-radius:16px;
-padding:16px;
-font-size:20px;
-font-weight:700;
-background:#374151;
-color:white;
-}
-
-.input-row{
-display:flex;
-gap:10px;
-}
-
-input{
-flex:1;
-padding:16px;
-border:none;
-border-radius:16px;
-font-size:20px;
-background:#1f2937;
-color:white;
-}
-
-#micBtn{
-width:90px;
-background:#ef4444;
-}
-
-#sendBtn{
-background:#10b981;
-}
-
-.card{
-flex:1;
-background:#1f2937;
-border-radius:24px;
-padding:20px;
-overflow:auto;
-line-height:1.8;
-font-size:20px;
-white-space:pre-wrap;
-}
-
-.hidden{
-display:none;
-}
-
-.bottom{
-display:flex;
-gap:10px;
-}
-
-.big{
-flex:1;
-background:#f59e0b;
-}
-
-#backBtn{
-width:100px;
-background:#ec4899;
-}
-
-#error{
-color:#fca5a5;
-white-space:pre-wrap;
-font-size:14px;
-min-height:20px;
-}
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>太座喜樂查經</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { background-color: #121212; color: #e0e0e0; font-family: sans-serif; }
+        .loading-spinner { border: 4px solid #374151; border-top: 4px solid #db2777; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        button:disabled { opacity: 0.5; cursor: not-allowed; }
+    </style>
 </head>
-
-<body>
-
-<div id="home" class="page">
-
-<div class="title">
-太座 喜樂查經
-</div>
-
-<div class="grid">
-<button class="btn q">心情悶</button>
-<button class="btn q">煩躁忙</button>
-<button class="btn q">健康</button>
-<button class="btn q">家庭</button>
-<button class="btn q">親子</button>
-<button class="btn q">夫妻相處</button>
-<button class="btn q">朋友</button>
-<button class="btn q">想老公</button>
-</div>
-
-<div class="input-row">
-<input id="input" placeholder="想查什麼">
-<button id="micBtn" class="btn">
-🎤
-</button>
-</div>
-
-<button id="sendBtn" class="btn">
-送出查經
-</button>
-
-<div id="error"></div>
-
-</div>
-
-<div id="resultPage"
-class="page hidden">
-
-<div id="result"
-class="card">
-查詢中...
-</div>
-
-<div class="bottom">
-<button id="speakBtn"
-class="btn big">
-🔊 朗讀
-</button>
-
-<button id="backBtn"
-class="btn">
-❤️
-</button>
-</div>
-
-</div>
-
-<script>
-const API_URL =
-"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent";
-
-const STORAGE_KEY =
-"gemini_api_key";
-
-let busy = false;
-
-/**********************
- API KEY
-**********************/
-function getApiKey(){
-
-let key =
-localStorage.getItem(STORAGE_KEY);
-
-if(!key){
-
-key = prompt(
-"第一次請輸入 Gemini API Key"
-);
-
-if(key){
-localStorage.setItem(
-STORAGE_KEY,
-key
-);
-}
-}
-
-return key;
-}
-
-/**********************
- 快捷
-**********************/
-document.querySelectorAll(".q")
-.forEach(btn=>{
-btn.onclick=()=>{
-input.value = btn.innerText;
-};
-});
-
-/**********************
- Error
-**********************/
-function showError(msg){
-document.getElementById("error")
-.innerText = msg;
-}
-
-/**********************
- Mic
-**********************/
-micBtn.onclick = async()=>{
-
-try{
-
-const SR =
-window.SpeechRecognition ||
-window.webkitSpeechRecognition;
-
-if(!SR){
-
-showError(
-"此手機瀏覽器不支援語音辨識"
-);
-
-return;
-}
-
-// 每次都重新建立
-const recognition =
-new SR();
-
-recognition.lang = "zh-TW";
-recognition.continuous = false;
-recognition.interimResults = false;
-
-recognition.onresult = (e)=>{
-input.value =
-e.results[0][0].transcript;
-};
-
-recognition.onerror = (e)=>{
-showError(
-"語音失敗：\n" +
-e.error
-);
-};
-
-recognition.start();
-
-}catch(err){
-
-showError(err.message);
-
-}
-};
-
-/**********************
- Send
-**********************/
-sendBtn.onclick = async()=>{
-
-if(busy) return;
-
-const text =
-input.value.trim();
-
-if(!text){
-showError("請輸入內容");
-return;
-}
-
-busy = true;
-showError("");
-
-home.classList.add("hidden");
-resultPage.classList.remove("hidden");
-
-result.innerText =
-"AI 正在查經中...";
-
-try{
-
-const apiKey = getApiKey();
-
-if(!apiKey){
-throw new Error(
-"沒有 API KEY"
-);
-}
-
-const prompt = `
-你是中華神學院資深老師，
-但不要提到老師。
-
-只用老公口吻。
-
-使用和合本聖經。
-
-主題：
-${text}
-
-請輸出：
-
-親愛的玲玲 平安
-
-安慰內容100~200字
-
-【經文】
-`;
-
-const res = await fetch(
-API_URL + "?key=" + apiKey,
-{
-method:"POST",
-headers:{
-"Content-Type":
-"application/json"
-},
-body:JSON.stringify({
-contents:[
-{
-parts:[
-{
-text:prompt
-}
-]
-}
-]
-})
-}
-);
-
-const data = await res.json();
-
-if(!res.ok){
-
-throw new Error(
-JSON.stringify(data,null,2)
-);
-
-}
-
-const output =
-data.candidates?.[0]
-?.content?.parts?.[0]
-?.text;
-
-result.innerText =
-output || "沒有回應";
-
-}catch(err){
-
-result.innerText =
-"發生錯誤";
-
-showError(
-"詳細錯誤：\n\n" +
-err.message
-);
-
-}finally{
-
-busy = false;
-
-}
-};
-
-/**********************
- Speak
-**********************/
-speakBtn.onclick = ()=>{
-
-speechSynthesis.cancel();
-
-const u =
-new SpeechSynthesisUtterance(
-result.innerText
-);
-
-u.lang = "zh-TW";
-u.rate = 0.82;
-
-speechSynthesis.speak(u);
-
-};
-
-/**********************
- Back
-**********************/
-backBtn.onclick = ()=>{
-
-speechSynthesis.cancel();
-
-resultPage.classList.add(
-"hidden"
-);
-
-home.classList.remove(
-"hidden"
-);
-
-};
-</script>
-
+<body class="h-full flex flex-col items-center justify-center p-4">
+
+    <!-- 設定頁：輸入與儲存 -->
+    <div id="setup-view" class="w-full max-w-sm text-center">
+        <h1 class="text-2xl font-bold mb-6 text-pink-400">親愛的玲玲，平安</h1>
+        <p class="mb-4 text-gray-400 text-sm">請輸入新的 API Key 以恢復連線</p>
+        <input type="password" id="api-key" placeholder="貼上 API Key" class="w-full p-4 rounded-lg bg-gray-800 border border-gray-600 mb-4 text-white">
+        <button onclick="saveApiKey()" class="w-full py-4 bg-pink-600 rounded-lg font-bold text-lg text-white">儲存並開始使用</button>
+    </div>
+
+    <!-- 主選單 -->
+    <div id="main-view" class="hidden w-full max-w-sm text-center space-y-4">
+        <h2 class="text-xl text-pink-300">今天心情如何？</h2>
+        <div class="grid grid-cols-2 gap-3">
+            <button onclick="askAI('心情悶')" class="p-4 bg-gray-800 rounded-xl">心情悶</button>
+            <button onclick="askAI('煩躁忙')" class="p-4 bg-gray-800 rounded-xl">煩躁忙</button>
+            <button onclick="askAI('健康')" class="p-4 bg-gray-800 rounded-xl">健康</button>
+            <button onclick="askAI('家庭')" class="p-4 bg-gray-800 rounded-xl">家庭</button>
+            <button onclick="askAI('親子')" class="p-4 bg-gray-800 rounded-xl">親子</button>
+            <button onclick="askAI('夫妻相處')" class="p-4 bg-gray-800 rounded-xl">夫妻相處</button>
+            <button onclick="askAI('朋友')" class="p-4 bg-gray-800 rounded-xl">朋友</button>
+            <button onclick="askAI('想老公')" class="p-4 bg-gray-800 rounded-xl">想老公</button>
+        </div>
+        <button onclick="startVoice()" class="w-full py-6 bg-blue-600 rounded-2xl font-bold text-xl text-white">🎤 語音輸入</button>
+        <!-- 方便重設的按鈕 -->
+        <button onclick="resetApiKey()" class="w-full py-2 text-gray-500 text-sm underline">更換 API Key</button>
+    </div>
+
+    <!-- 結果頁 -->
+    <div id="result-view" class="hidden w-full h-full flex flex-col p-2">
+        <div id="card" class="bg-gray-800 p-6 rounded-3xl border-2 border-pink-500 overflow-y-auto flex-grow mb-4 text-left">
+            <h3 class="text-pink-300 font-bold mb-2">親愛的玲玲 平安</h3>
+            <div id="result-content" class="text-lg leading-relaxed"></div>
+        </div>
+        <div class="space-y-3">
+            <button onclick="speakResult()" class="w-full py-5 bg-green-600 rounded-2xl font-bold text-xl text-white">大聲朗讀給太座聽</button>
+            <button onclick="showMain()" class="w-full py-5 bg-gray-700 rounded-2xl font-bold text-xl text-white">❤️ 返回重新查詢</button>
+        </div>
+    </div>
+
+    <script>
+        const TARGET_MODEL = "gemini-3.5-flash";
+
+        // 儲存 Key
+        function saveApiKey() {
+            const key = document.getElementById('api-key').value.trim();
+            if(key) { 
+                localStorage.setItem('gemini_key', key); 
+                alert("API Key 已儲存成功！");
+                showMain(); 
+            } else {
+                alert("請輸入有效的 API Key");
+            }
+        }
+
+        // 清除 Key 並重載
+        function resetApiKey() {
+            if(confirm("確定要更換 API Key 嗎？")) {
+                localStorage.removeItem('gemini_key');
+                location.reload();
+            }
+        }
+
+        function showMain() {
+            document.getElementById('setup-view').classList.add('hidden');
+            document.getElementById('result-view').classList.add('hidden');
+            document.getElementById('main-view').classList.remove('hidden');
+        }
+
+        async function askAI(query) {
+            const key = localStorage.getItem('gemini_key');
+            if(!key) { alert("找不到 API Key，請先設定"); resetApiKey(); return; }
+
+            const contentDiv = document.getElementById('result-content');
+            const btns = document.querySelectorAll('button');
+            
+            btns.forEach(b => b.disabled = true);
+            document.getElementById('main-view').classList.add('hidden');
+            document.getElementById('result-view').classList.remove('hidden');
+            contentDiv.innerHTML = `<div class="text-center"><div class="loading-spinner mx-auto my-4"></div><p>老公正在連線天父的愛...</p></div>`;
+
+            try {
+                const url = `https://generativelanguage.googleapis.com/v1beta/models/${TARGET_MODEL}:generateContent?key=${key}`;
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{ parts: [{ text: `你是老公，用溫柔親切的語氣，針對「${query}」這個話題，給予安慰與聖經金句（合和本），字數100~200字。開頭請寫「親愛的玲玲 平安」。直接給內容，不需自我介紹。` }] }]
+                    })
+                });
+
+                const data = await response.json();
+                
+                if (data.error) {
+                    throw new Error(JSON.stringify(data.error));
+                }
+                
+                contentDiv.innerText = data.candidates[0].content.parts[0].text;
+            } catch (err) {
+                contentDiv.innerHTML = `<div class="text-red-400 p-4 border border-red-800 rounded bg-red-900/20">
+                    <strong>連線失敗：</strong><br><pre class="text-xs overflow-x-auto">${err.message}</pre><br><br>
+                    <strong>建議：</strong>如果錯誤包含 API_KEY_INVALID，請點擊下方的「更換 API Key」按鈕輸入新 Key。</div>`;
+            } finally {
+                btns.forEach(b => b.disabled = false);
+            }
+        }
+
+        function startVoice() {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!SpeechRecognition) { alert("此裝置不支援語音辨識"); return; }
+            const rec = new SpeechRecognition();
+            rec.lang = 'zh-TW';
+            rec.onresult = (e) => askAI(e.results[0][0].transcript);
+            rec.start();
+        }
+
+        function speakResult() {
+            window.speechSynthesis.cancel();
+            const msg = new SpeechSynthesisUtterance(document.getElementById('result-content').innerText);
+            msg.lang = 'zh-TW';
+            msg.rate = 0.8;
+            window.speechSynthesis.speak(msg);
+        }
+
+        // 頁面載入時檢查是否已有 Key
+        if (localStorage.getItem('gemini_key')) {
+            showMain();
+        }
+    </script>
 </body>
 </html>
-```
