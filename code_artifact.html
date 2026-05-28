@@ -242,7 +242,7 @@
 你的所有回覆深度與神學啟發，都必須參考並符合網頁 ccbible 查經網站（https://ccbiblestudy.net/index-T.htm）所強調的：靈修培育、讀經扎根與和合本聖經真理。
 
 請依照下列嚴格格式輸出：
-1. 第一段：以老公溫暖、極具同理心、緩慢且親切的語調，寫出 100~200 字的安慰打氣話語。必須貼合太座提問的心境，給予全然的接納與支持，不要有任何前言、老公的自我介紹。
+1. 第一段：以老公溫慢、極具同理心、緩慢且親切的語調，寫出 100~200 字的安慰打氣話語。必須貼合太座提問的心境，給予全然的接納與支持，不要有任何前言、老公的自我介紹。
 2. 空一行。
 3. 第二段：引用一句最貼切的聖經和合本經文，並在括號內附上精確的卷章節（例如：腓立比書 4:6-7）。
 
@@ -282,7 +282,7 @@
       if (!geminiApiKey) {
         setTimeout(() => { showKeyModal(); }, 800);
       } else {
-        showToast("已成功讀取裝置儲存的 API 金鑰");
+        showToast("已成功讀取本機裝置儲存的 API 金鑰");
       }
       initSpeechRecognition();
     };
@@ -315,7 +315,7 @@
       }
       geminiApiKey = val;
       localStorage.setItem(STORAGE_KEY, val);
-      showToast("金鑰已儲存！同裝置程式更新免重輸。");
+      showToast("金鑰儲存成功！同裝置更新不需重新輸入。");
       hideKeyModal();
     }
 
@@ -339,11 +339,11 @@
         isMusicPlaying = true;
         document.getElementById('musicIcon').innerText = "🔊";
         document.getElementById('musicStatus').innerText = "愛的真諦:開";
-        showToast("配樂《愛的真諦》演奏中...");
+        showToast("背景配樂《愛的真諦》播放中...");
 
         let noteIndex = 0;
-        const tempo = 120; // 速度
-        const beatDuration = 60 / tempo; // 每拍秒數
+        const tempo = 120;
+        const beatDuration = 60 / tempo;
 
         function playNextNote() {
           if (!isMusicPlaying) return;
@@ -353,16 +353,13 @@
           const duration = current.dur * beatDuration;
 
           if (freq) {
-            // 創建振盪器 (採用溫和的三角波)
             const osc = audioCtx.createOscillator();
             const gainNode = audioCtx.createGain();
             
             osc.type = 'triangle';
             osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
 
-            // 溫和且低沉的背景音量設計 (0.015 ~ 0.025 防止喧賓奪主)
             gainNode.gain.setValueAtTime(0.02, audioCtx.currentTime);
-            // 輕微的釋放衰減效果，避免爆音
             gainNode.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + duration - 0.02);
 
             osc.connect(gainNode);
@@ -379,7 +376,7 @@
         playNextNote();
       } catch (e) {
         console.error("音樂合成失敗:", e);
-        showToast("您的瀏覽器暫不支援 Web Audio 合成音效");
+        showToast("您的手機瀏覽器暫不支援 Web Audio 合成音效");
       }
     }
 
@@ -388,9 +385,9 @@
       if (nextNoteTimeout) clearTimeout(nextNoteTimeout);
       document.getElementById('musicIcon').innerText = "🔇";
       document.getElementById('musicStatus').innerText = "愛的真諦:關";
-      showToast("背景配樂已靜音");
     }
 
+    // 初始化語音辨識
     function initSpeechRecognition() {
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
       if (!SpeechRecognition) {
@@ -407,18 +404,20 @@
       recognition.onstart = function() {
         isListening = true;
         document.getElementById('micBtn').classList.add('mic-active');
-        document.getElementById('userInput').placeholder = "傾聽中...請說出您的心情...";
+        document.getElementById('userInput').placeholder = "老公正在聽，請對著手機說話...";
       };
 
       recognition.onerror = function(e) {
         console.error("語音輸入錯誤:", e.error);
         stopSpeechUI();
         if (e.error === 'not-allowed') {
-          showToast("麥克風權限被拒絕，請在系統設定中開啟權限");
+          showToast("麥克風權限被拒絕，請在手機系統設定中開放麥克風權限");
         } else if (e.error === 'no-speech') {
-          showToast("沒有偵測到您的聲音，請大聲一點或手動輸入");
+          showToast("沒有聽到聲音，請靠近麥克風再試一次");
+        } else if (e.error === 'audio-capture') {
+          showToast("手機音訊裝置被佔用，請關閉其他音樂播放程式後再試");
         } else {
-          showToast("語音辨識出錯，請用鍵盤手動輸入喔");
+          showToast("語音辨識出錯，請用手動輸入或檢查連線環境喔");
         }
       };
 
@@ -429,15 +428,21 @@
       recognition.onresult = function(event) {
         const text = event.results[0][0].transcript;
         document.getElementById('userInput').value = text;
-        showToast("已辨識：" + text);
+        showToast("已收到太座的傾訴：" + text);
         triggerSearch();
       };
     }
 
+    // 啟動語音辨識（核心優化：整合 HTTPS 安全診斷與背景音樂靜音防佔用）
     function toggleSpeech() {
       if (!recognition) {
-        showToast("此裝置的瀏覽器未開放或不支援麥克風語音輸入");
+        showToast("此手機裝置的瀏覽器未開放或不支援麥克風語音輸入");
         return;
+      }
+
+      // 手機端安全通訊協定 (HTTPS) 限制預警診斷
+      if (window.location.protocol !== 'https:' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+        showToast("⚠️ 手機規範提示：必須在 HTTPS 安全加密網址下，才能啟用麥克風喔！");
       }
       
       if (audioCtx && audioCtx.state === 'suspended') {
@@ -447,10 +452,21 @@
       if (isListening) {
         recognition.stop();
       } else {
+        // 【關鍵優化】錄音前強制停止所有背景旋律與大聲朗讀，防止手機系統通道被佔用導致失敗！
+        stopBackgroundMusic();
+        window.speechSynthesis.cancel();
+
         try {
           recognition.start();
         } catch (e) {
-          console.error(e);
+          console.error("啟動辨識失敗", e);
+          // 如果實例意外毀損，自動重新初始化
+          initSpeechRecognition();
+          try {
+            recognition.start();
+          } catch(err) {
+            showToast("麥克風啟動失敗，建議重新載入或使用鍵盤手動輸入");
+          }
         }
       }
     }
@@ -458,114 +474,62 @@
     function stopSpeechUI() {
       isListening = false;
       document.getElementById('micBtn').classList.remove('mic-active');
-      document.getElementById('userInput').placeholder = "跟老公說點心事，或按麥克風...";
+      document.getElementById('userInput').placeholder = "跟老公說點心事，或直接按麥克風...";
     }
 
-    function quickSearch(theme) {
-      let promptText = "";
-      switch(theme) {
-        case '心情悶': promptText = "親愛的老公，我今天心情有點悶，提不起勁來，需要你的溫柔安慰與一劑聖經金句。"; break;
-        case '煩躁忙': promptText = "親愛的老公，今天生活好忙亂好煩躁，思緒靜不下來，求主的話語賜下平靜。"; break;
-        case '健康': promptText = "親愛的老公，最近身體有些不適與疲憊，求主看顧醫治並賜予力量。"; break;
-        case '家庭': promptText = "親愛的老公，家裡的大小事繁多，求主保守我們家充滿和樂、平靜與智慧。"; break;
-        case '親子': promptText = "親愛的老公，教導大學孩子需要更多的智慧，求主指引我學會合適的交託與放手。"; break;
-        case '夫妻相處': promptText = "親愛的老公，求主看顧我們夫妻的心靈，讓我們在主愛裡持續合一、互相包容扶持。"; break;
-        case '朋友': promptText = "親愛的老公，求主賜給我與朋友相處的智慧，充滿恩慈與智慧的應對。"; break;
-        case '想老公': promptText = "親愛的老公，我今天特別想你，求你對我說幾句深情溫暖的打氣話語。"; break;
-        default: promptText = `我想查考關於：${theme}`;
-      }
-      document.getElementById('userInput').value = promptText;
-      triggerSearch();
-    }
 
-    function triggerSearch() {
-      const text = document.getElementById('userInput').value.trim();
-      if (!text) {
-        showToast("請先輸入您的心境或查考方向喔");
-        return;
-      }
-      if (!geminiApiKey) {
-        showToast("請先點選右上角設定金鑰");
-        showKeyModal();
-        return;
-      }
-      executeGeminiQuery(text);
-    }
-
-    // 介面鎖定控制 (防止重複發送與搶佔)
-    function setInterfaceLocked(locked) {
-      const overlay = document.getElementById('loadingOverlay');
-      const micBtn = document.getElementById('micBtn');
-      const sendBtn = document.getElementById('sendBtn');
-      const userInput = document.getElementById('userInput');
-      const quickBtns = document.querySelectorAll('.quick-btn');
-
-      if (locked) {
-        overlay.classList.remove('hidden');
-        micBtn.disabled = true;
-        sendBtn.disabled = true;
-        userInput.disabled = true;
-        quickBtns.forEach(btn => btn.disabled = true);
-      } else {
-        overlay.classList.add('hidden');
-        micBtn.disabled = false;
-        sendBtn.disabled = false;
-        userInput.disabled = false;
-        quickBtns.forEach(btn => btn.disabled = false);
-      }
-    }
-
-    async function fetchWithRetry(url, options, retries = 5, delay = 1000) {
+    // 具有秒級超時（Timeout）控制與超快速重試的請求函數 (極致提升反應速度)
+    async function fetchWithTimeoutAndRetry(url, options, retries = 1, delay = 500, timeoutMs = 4000) {
+      const controller = new AbortController();
+      const id = setTimeout(() => controller.abort(), timeoutMs);
+      
+      const updatedOptions = { ...options, signal: controller.signal };
+      
       try {
-        const response = await fetch(url, options);
+        const response = await fetch(url, updatedOptions);
+        clearTimeout(id);
+        
         if (!response.ok) {
           if (response.status === 400 || response.status === 403 || response.status === 404 || response.status === 429) {
-            throw response; // 特定 API 級別錯誤直接拋出不空耗重試
+            throw response;
           }
           if (retries > 0) {
-            await new Promise(res => setTimeout(res, delay));
-            return await fetchWithRetry(url, options, retries - 1, delay * 2);
+            await new Promise(resolve => setTimeout(resolve, delay));
+            return await fetchWithTimeoutAndRetry(url, options, retries - 1, delay * 1.5, timeoutMs);
           }
           throw response;
         }
         return response;
       } catch (error) {
-        if (retries > 0 && !(error instanceof Response)) {
-          // 網路層斷線才進行重試
-          await new Promise(res => setTimeout(res, delay));
-          return await fetchWithRetry(url, options, retries - 1, delay * 2);
+        clearTimeout(id);
+        if (retries > 0 && error.name !== 'AbortError') {
+          await new Promise(resolve => setTimeout(resolve, delay));
+          return await fetchWithTimeoutAndRetry(url, options, retries - 1, delay * 1.5, timeoutMs);
         }
         throw error;
       }
     }
 
+    // 核心請求：實作智慧多模型秒級切換輪替鏈
     async function executeGeminiQuery(userQuery) {
       setInterfaceLocked(true);
 
-      // 自動同步重啟背景音樂，創造沉浸式查經氛圍
-      if (!isMusicPlaying && audioCtx && audioCtx.state === 'suspended') {
-        startBackgroundMusic();
-      }
-
-      // 模型降級輪替鏈：將相容性最高、無限制的 1.5 系列排在首位，防止 404
       const models = [
-        "gemini-1.5-flash",
-        "gemini-2.5-flash",
-        "gemini-1.5-pro",
-        "gemini-2.5-flash-preview-09-2025"
+        "gemini-3.1-flash-lite",
+        "gemini-3.5-flash",
+        "gemini-2.5-flash"
       ];
-
+      
       let lastError = null;
       let success = false;
 
       for (let i = 0; i < models.length; i++) {
         const model = models[i];
         const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiApiKey}`;
-
-        // 動態更換載入進度提示
-        let loadingMsg = "老公正在為妳翻查聖經求亮光，等我一下喔...";
+        
+        let loadingMsg = "老公正在查經，尋求亮光中...";
         if (i > 0) {
-          loadingMsg = "老公正在深入尋找最能契合妳心境的智慧經卷，再等我一下下喔...";
+          loadingMsg = "老公正在調用備用智慧經卷，再等我一下下喔...";
         }
         document.getElementById('loadingText').innerText = loadingMsg;
 
@@ -575,27 +539,25 @@
         };
 
         try {
-          const maxRetries = (i === 0) ? 3 : 1; // 首選模型重試3次，後續備用模型重試1次
-          const response = await fetchWithRetry(url, {
+          const response = await fetchWithTimeoutAndRetry(url, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
-          }, maxRetries, 800);
+          }, 0, 500, 4000); // 0 次重試，4秒超時
 
           const result = await response.json();
           const responseText = result.candidates?.[0]?.content?.parts?.[0]?.text;
-
+          
           if (responseText) {
             displayResultCard(responseText);
             success = true;
-            break; // 成功獲得成果，跳出輪替鏈
+            break;
           } else {
             throw new Error("Format error");
           }
         } catch (err) {
-          console.warn(`[自動調度] 模型 ${model} 連線失敗，嘗試下一級備用。錯誤：`, err);
+          console.warn(`[快速調度] 模型 ${model} 失敗，自動秒級切換。`, err);
           lastError = err;
-          // 若遭遇模型找不到 (404)、未授權 (403)、壞請求 (400) 等，直接往下一個模型輪替
           continue;
         }
       }
@@ -607,7 +569,7 @@
       setInterfaceLocked(false);
     }
 
-    // 處理最終解析錯誤與防呆
+    // 處理最終的錯誤診斷呈現
     function handleFinalError(err) {
       if (err instanceof Response) {
         const statusCode = err.status;
@@ -616,30 +578,30 @@
 
         switch (statusCode) {
           case 400:
-            title = "金鑰格式有誤 (400 Bad Request)";
-            explanation = "您的 API 金鑰長度或格式似乎不正確，請點選右上角齒輪按鈕重新輸入。";
+            title = "金鑰格式錯誤 (400 Bad Request)";
+            explanation = "您的 API 金鑰格式可能不正確，請點選右上角齒輪按鈕重新輸入檢查。";
             break;
           case 403:
-            title = "金鑰無效或受限 (403 Forbidden)";
-            explanation = "此 API Key 無權限。請確認金鑰是否輸入正確，或前往 Google AI Studio 檢查金鑰狀態。";
+            title = "金鑰效期或權限限制 (403 Forbidden)";
+            explanation = "您的 API 金鑰無權訪問，請前往 Google AI Studio 檢查金鑰狀態是否被封禁或異常。";
             break;
           case 404:
-            title = "模型端點找不到 (404 Not Found)";
-            explanation = "Gemini 伺服器回報 404。此 Key 的方案未開通我們所使用的全部模型，請嘗試在 AI Studio 中為此專案重新建立一組 Key！";
+            title = "找不到可用的模型端點 (404 Not Found)";
+            explanation = "目前的所有主流快速模型（3.1 Flash-Lite, 3.5 Flash）均回報 404。此 Key 的方案可能未開通，請嘗試在 AI Studio 重新建立一組 Key！";
             break;
           case 429:
             title = "AI 請求額度用盡 (429 Rate Limit)";
-            explanation = "今日免費存取次數已達上限，請稍微休息幾分鐘後再試試。";
+            explanation = "今日免費金鑰存取次數已達上限，請稍微休息幾分鐘後再試試。";
             break;
           default:
             title = `伺服器連線錯誤 (代碼: ${statusCode})`;
-            explanation = "發生了未知的伺服器通訊錯誤，請稍後再試。";
+            explanation = "發生了未知的伺服器通訊錯誤，請稍後重試。";
         }
         showDebugError(title, explanation);
       } else {
         showDebugError(
-          "網路連線中斷或受阻",
-          "可能是手機目前沒有網際網路連線，或者是您的網域/CORS 遭防火牆或系統阻擋。請檢查網路連線。"
+          "網路連線超時或受阻",
+          "連接 Google API 超時（超過 4 秒未回應），或是手機目前沒有網際網路連線、或者您的網域遭防火牆阻擋。請檢查連線狀態。"
         );
       }
     }
@@ -652,7 +614,6 @@
       htmlContent += `<div class="text-xs tracking-widest text-amber-500/80 font-bold uppercase">Dearest Wife • 專屬安慰</div>`;
 
       paragraphs.forEach((p, idx) => {
-        // 判定聖經經句格式（有卷章節標記）
         if (p.includes('(') || p.includes('（') || p.includes('：') || p.includes(':') || idx === paragraphs.length - 1) {
           htmlContent += `
             <div class="my-3 p-4 rounded-2xl bg-slate-900/90 border-l-4 border-amber-500 shadow-md">
@@ -660,7 +621,6 @@
             </div>
           `;
         } else {
-          // 一般溫和的老公同理打氣話語
           htmlContent += `
             <p class="text-slate-100 text-lg font-semibold leading-relaxed drop-shadow text-justify">
               ${p}
@@ -672,9 +632,7 @@
       htmlContent += `</div>`;
       cardContent.innerHTML = htmlContent;
 
-      // 切換至全新頁面
       switchScreen('result');
-      // 清空輸入框
       document.getElementById('userInput').value = "";
     }
 
@@ -714,9 +672,61 @@
     }
 
     function goBackToSearch() {
-      // 回到首頁前，先安靜取消所有正在進行的語音朗讀
       window.speechSynthesis.cancel();
       switchScreen('search');
+    }
+
+    function setInterfaceLocked(locked) {
+      const overlay = document.getElementById('loadingOverlay');
+      const micBtn = document.getElementById('micBtn');
+      const sendBtn = document.getElementById('sendBtn');
+      const userInput = document.getElementById('userInput');
+      const quickBtns = document.querySelectorAll('.quick-btn');
+
+      if (locked) {
+        overlay.classList.remove('hidden');
+        micBtn.disabled = true;
+        sendBtn.disabled = true;
+        userInput.disabled = true;
+        quickBtns.forEach(btn => btn.disabled = true);
+      } else {
+        overlay.classList.add('hidden');
+        micBtn.disabled = false;
+        sendBtn.disabled = false;
+        userInput.disabled = false;
+        quickBtns.forEach(btn => btn.disabled = false);
+      }
+    }
+
+    function quickSearch(theme) {
+      let promptText = "";
+      switch(theme) {
+        case '心情悶': promptText = "親愛的老公，我今天心情有點悶，覺得提不起勁，求安慰與方向。"; break;
+        case '煩躁忙': promptText = "親愛的老公，今天生活步調太快太雜，事情做好多，感到煩躁疲憊。"; break;
+        case '健康': promptText = "親愛的老公，最近身體有些疲憊微恙，求能帶來健康平安的依靠與亮光。"; break;
+        case '家庭': promptText = "親愛的老公，家裡打掃和繁雜的事不少，求家庭和樂與心靈的平靜。"; break;
+        case '親子': promptText = "親愛的老公，看著大孩子的生活，求當個有智慧放手又關懷的媽媽。"; break;
+        case '夫妻相處': promptText = "親愛的老公，求主看顧我們夫妻的心，給我們源源不絕親密與扶持的力量。"; break;
+        case '朋友': promptText = "親愛的老公，求賜予人際關係的智慧，與朋友相處有恩慈、能互相信任。"; break;
+        case '想老公': promptText = "親愛的老公，我今天特別想念你，求你對我說幾句溫暖深情的話。"; break;
+        default: promptText = `我想查考關於：${theme}`;
+      }
+      document.getElementById('userInput').value = promptText;
+      triggerSearch();
+    }
+
+    function triggerSearch() {
+      const text = document.getElementById('userInput').value.trim();
+      if (!text) {
+        showToast("請先輸入您想查考的事或心情喔");
+        return;
+      }
+      if (!geminiApiKey) {
+        showToast("請先設定您的 Gemini API Key！");
+        showKeyModal();
+        return;
+      }
+      executeGeminiQuery(text);
     }
 
     let currentUtterance = null;
@@ -725,7 +735,6 @@
       window.speechSynthesis.cancel();
 
       const cardContentText = document.getElementById('cardContent').innerText;
-      // 去除純排版語義字元
       const textToSpeak = cardContentText
         .replace("Dearest Wife • 專屬安慰", "")
         .replace(/「/g, "")
@@ -735,11 +744,9 @@
       if (!textToSpeak) return;
 
       currentUtterance = new SpeechSynthesisUtterance(textToSpeak);
-      // 精心設計的老公語氣參數：緩慢、渾厚、極具溫柔感
-      currentUtterance.rate = 0.80;   // 緩慢安祥
-      currentUtterance.pitch = 0.88;  // 略微低沉、溫暖、有磁性
+      currentUtterance.rate = 0.80;   
+      currentUtterance.pitch = 0.88;  
 
-      // 選擇最優的中文發音語音
       const voices = window.speechSynthesis.getVoices();
       let selectedVoice = null;
       
@@ -783,7 +790,6 @@
         ttsBtn.onclick = speakOutput;
       };
 
-      // 再次點擊大聲朗讀鍵可中途停止
       ttsBtn.onclick = function() {
         window.speechSynthesis.cancel();
         ttsBtn.innerHTML = originalHtml;
