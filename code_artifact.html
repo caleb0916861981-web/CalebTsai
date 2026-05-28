@@ -1,122 +1,435 @@
+```html id="v8jyr0"
 <!DOCTYPE html>
-<html lang="zh-Hant-TW" class="h-full">
+<html lang="zh-Hant">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>太座喜樂查經</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        body { background-color: #121212; color: #e0e0e0; font-family: sans-serif; }
-        .card-shadow { box-shadow: 0 4px 20px rgba(0,0,0,0.5); }
-        .loading-pulse { animation: pulse 1.5s infinite; }
-        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport"
+content="width=device-width,initial-scale=1,maximum-scale=1">
+
+<title>太座 喜樂查經</title>
+
+<style>
+html,body{
+margin:0;
+padding:0;
+width:100%;
+height:100%;
+overflow:hidden;
+background:#111827;
+font-family:
+"PingFang TC",
+"Microsoft JhengHei",
+sans-serif;
+color:white;
+}
+
+body{
+display:flex;
+justify-content:center;
+align-items:center;
+}
+
+.page{
+width:100vw;
+height:100vh;
+padding:16px;
+box-sizing:border-box;
+display:flex;
+flex-direction:column;
+gap:12px;
+}
+
+.title{
+text-align:center;
+font-size:32px;
+font-weight:900;
+color:#fbbf24;
+}
+
+.grid{
+display:grid;
+grid-template-columns:1fr 1fr;
+gap:10px;
+}
+
+.btn{
+border:none;
+border-radius:16px;
+padding:16px;
+font-size:20px;
+font-weight:700;
+background:#374151;
+color:white;
+}
+
+.input-row{
+display:flex;
+gap:10px;
+}
+
+input{
+flex:1;
+padding:16px;
+border:none;
+border-radius:16px;
+font-size:20px;
+background:#1f2937;
+color:white;
+}
+
+#micBtn{
+width:90px;
+background:#ef4444;
+}
+
+#sendBtn{
+background:#10b981;
+}
+
+.card{
+flex:1;
+background:#1f2937;
+border-radius:24px;
+padding:20px;
+overflow:auto;
+line-height:1.8;
+font-size:20px;
+white-space:pre-wrap;
+}
+
+.hidden{
+display:none;
+}
+
+.bottom{
+display:flex;
+gap:10px;
+}
+
+.big{
+flex:1;
+background:#f59e0b;
+}
+
+#backBtn{
+width:100px;
+background:#ec4899;
+}
+
+#error{
+color:#fca5a5;
+white-space:pre-wrap;
+font-size:14px;
+min-height:20px;
+}
+</style>
 </head>
-<body class="h-full flex flex-col items-center justify-center p-4 overflow-hidden">
 
-    <!-- 初始設定區 -->
-    <div id="setup-view" class="w-full max-w-sm text-center">
-        <h1 class="text-2xl font-bold mb-6 text-pink-400">設定您的愛心查經</h1>
-        <input type="password" id="api-key" placeholder="請輸入 Gemini API Key" class="w-full p-4 rounded-lg bg-gray-800 border border-gray-600 mb-4 text-white">
-        <button onclick="saveApiKey()" class="w-full py-4 bg-pink-600 rounded-lg font-bold text-lg">確認並開始</button>
-    </div>
+<body>
 
-    <!-- 主界面 -->
-    <div id="main-view" class="hidden w-full max-w-sm text-center space-y-4">
-        <h2 class="text-xl text-pink-300">親愛的玲玲，今天心情如何？</h2>
-        <div id="grid" class="grid grid-cols-2 gap-3">
-            <!-- 快捷選單 -->
-            <button onclick="askAI('心情悶')" class="p-4 bg-gray-800 rounded-xl border border-gray-700">心情悶</button>
-            <button onclick="askAI('煩躁忙')" class="p-4 bg-gray-800 rounded-xl border border-gray-700">煩躁忙</button>
-            <button onclick="askAI('健康')" class="p-4 bg-gray-800 rounded-xl border border-gray-700">健康</button>
-            <button onclick="askAI('家庭')" class="p-4 bg-gray-800 rounded-xl border border-gray-700">家庭</button>
-            <button onclick="askAI('親子')" class="p-4 bg-gray-800 rounded-xl border border-gray-700">親子</button>
-            <button onclick="askAI('夫妻相處')" class="p-4 bg-gray-800 rounded-xl border border-gray-700">夫妻相處</button>
-            <button onclick="askAI('朋友')" class="p-4 bg-gray-800 rounded-xl border border-gray-700">朋友</button>
-            <button onclick="askAI('想老公')" class="p-4 bg-gray-800 rounded-xl border border-gray-700">想老公</button>
-        </div>
-        <button id="mic-btn" onclick="startVoice()" class="w-full py-6 bg-blue-600 rounded-2xl font-bold text-xl mt-4">🎤 語音輸入</button>
-    </div>
+<div id="home" class="page">
 
-    <!-- 結果頁面 -->
-    <div id="result-view" class="hidden w-full h-full flex flex-col justify-between p-2">
-        <div id="card" class="bg-gray-800 p-6 rounded-3xl border-2 border-pink-500 card-shadow overflow-y-auto flex-grow mb-4">
-            <h3 class="text-pink-300 font-bold mb-2">親愛的玲玲 平安</h3>
-            <div id="result-content" class="text-lg leading-relaxed"></div>
-        </div>
-        <div class="space-y-3">
-            <button id="read-btn" onclick="speakResult()" class="w-full py-5 bg-green-600 rounded-2xl font-bold text-xl">大聲朗讀給太座聽</button>
-            <button onclick="showMain()" class="w-full py-5 bg-gray-700 rounded-2xl font-bold text-xl">❤️ 返回重新查詢</button>
-        </div>
-    </div>
+<div class="title">
+太座 喜樂查經
+</div>
 
-    <script>
-        const API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=";
-        
-        function saveApiKey() {
-            const key = document.getElementById('api-key').value;
-            if(key) { localStorage.setItem('gemini_key', key); showMain(); }
-        }
+<div class="grid">
+<button class="btn q">心情悶</button>
+<button class="btn q">煩躁忙</button>
+<button class="btn q">健康</button>
+<button class="btn q">家庭</button>
+<button class="btn q">親子</button>
+<button class="btn q">夫妻相處</button>
+<button class="btn q">朋友</button>
+<button class="btn q">想老公</button>
+</div>
 
-        function showMain() {
-            document.getElementById('setup-view').classList.add('hidden');
-            document.getElementById('result-view').classList.add('hidden');
-            document.getElementById('main-view').classList.remove('hidden');
-        }
+<div class="input-row">
+<input id="input" placeholder="想查什麼">
+<button id="micBtn" class="btn">
+🎤
+</button>
+</div>
 
-        async function askAI(query) {
-            const key = localStorage.getItem('gemini_key');
-            const contentDiv = document.getElementById('result-content');
-            const resultView = document.getElementById('result-view');
-            
-            // 鎖定介面
-            document.querySelectorAll('button').forEach(b => b.disabled = true);
-            contentDiv.innerHTML = "正在向主尋求溫暖安慰...";
-            document.getElementById('main-view').classList.add('hidden');
-            resultView.classList.remove('hidden');
+<button id="sendBtn" class="btn">
+送出查經
+</button>
 
-            try {
-                const response = await fetch(API_URL + key, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        contents: [{ parts: [{ text: `你是老公，用溫柔親切的語氣，針對「${query}」這個話題，給予安慰與聖經金句（合和本），字數100~200字。開頭請寫「親愛的玲玲 平安」。直接給內容，不需自我介紹。` }] }]
-                    })
-                });
+<div id="error"></div>
 
-                const data = await response.json();
-                if (data.error) throw new Error(data.error.message || "發生未知錯誤");
-                contentDiv.innerText = data.candidates[0].content.parts[0].text;
-            } catch (err) {
-                contentDiv.innerHTML = `<span class="text-red-400">連線失敗: ${err.message}</span>`;
-            } finally {
-                document.querySelectorAll('button').forEach(b => b.disabled = false);
-            }
-        }
+</div>
 
-        function startVoice() {
-            if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
-                alert("此瀏覽器不支援語音辨識");
-                return;
-            }
-            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-            const recognition = new SpeechRecognition();
-            recognition.lang = 'zh-TW';
-            recognition.onresult = (e) => askAI(e.results[0][0].transcript);
-            recognition.start();
-        }
+<div id="resultPage"
+class="page hidden">
 
-        function speakResult() {
-            const text = document.getElementById('result-content').innerText;
-            const msg = new SpeechSynthesisUtterance(text);
-            msg.lang = 'zh-TW';
-            msg.rate = 0.8; // 緩慢親切
-            msg.pitch = 1.0;
-            window.speechSynthesis.speak(msg);
-        }
+<div id="result"
+class="card">
+查詢中...
+</div>
 
-        // 初始化
-        if (localStorage.getItem('gemini_key')) showMain();
-    </script>
+<div class="bottom">
+<button id="speakBtn"
+class="btn big">
+🔊 朗讀
+</button>
+
+<button id="backBtn"
+class="btn">
+❤️
+</button>
+</div>
+
+</div>
+
+<script>
+const API_URL =
+"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent";
+
+const STORAGE_KEY =
+"gemini_api_key";
+
+let busy = false;
+
+/**********************
+ API KEY
+**********************/
+function getApiKey(){
+
+let key =
+localStorage.getItem(STORAGE_KEY);
+
+if(!key){
+
+key = prompt(
+"第一次請輸入 Gemini API Key"
+);
+
+if(key){
+localStorage.setItem(
+STORAGE_KEY,
+key
+);
+}
+}
+
+return key;
+}
+
+/**********************
+ 快捷
+**********************/
+document.querySelectorAll(".q")
+.forEach(btn=>{
+btn.onclick=()=>{
+input.value = btn.innerText;
+};
+});
+
+/**********************
+ Error
+**********************/
+function showError(msg){
+document.getElementById("error")
+.innerText = msg;
+}
+
+/**********************
+ Mic
+**********************/
+micBtn.onclick = async()=>{
+
+try{
+
+const SR =
+window.SpeechRecognition ||
+window.webkitSpeechRecognition;
+
+if(!SR){
+
+showError(
+"此手機瀏覽器不支援語音辨識"
+);
+
+return;
+}
+
+// 每次都重新建立
+const recognition =
+new SR();
+
+recognition.lang = "zh-TW";
+recognition.continuous = false;
+recognition.interimResults = false;
+
+recognition.onresult = (e)=>{
+input.value =
+e.results[0][0].transcript;
+};
+
+recognition.onerror = (e)=>{
+showError(
+"語音失敗：\n" +
+e.error
+);
+};
+
+recognition.start();
+
+}catch(err){
+
+showError(err.message);
+
+}
+};
+
+/**********************
+ Send
+**********************/
+sendBtn.onclick = async()=>{
+
+if(busy) return;
+
+const text =
+input.value.trim();
+
+if(!text){
+showError("請輸入內容");
+return;
+}
+
+busy = true;
+showError("");
+
+home.classList.add("hidden");
+resultPage.classList.remove("hidden");
+
+result.innerText =
+"AI 正在查經中...";
+
+try{
+
+const apiKey = getApiKey();
+
+if(!apiKey){
+throw new Error(
+"沒有 API KEY"
+);
+}
+
+const prompt = `
+你是中華神學院資深老師，
+但不要提到老師。
+
+只用老公口吻。
+
+使用和合本聖經。
+
+主題：
+${text}
+
+請輸出：
+
+親愛的玲玲 平安
+
+安慰內容100~200字
+
+【經文】
+`;
+
+const res = await fetch(
+API_URL + "?key=" + apiKey,
+{
+method:"POST",
+headers:{
+"Content-Type":
+"application/json"
+},
+body:JSON.stringify({
+contents:[
+{
+parts:[
+{
+text:prompt
+}
+]
+}
+]
+})
+}
+);
+
+const data = await res.json();
+
+if(!res.ok){
+
+throw new Error(
+JSON.stringify(data,null,2)
+);
+
+}
+
+const output =
+data.candidates?.[0]
+?.content?.parts?.[0]
+?.text;
+
+result.innerText =
+output || "沒有回應";
+
+}catch(err){
+
+result.innerText =
+"發生錯誤";
+
+showError(
+"詳細錯誤：\n\n" +
+err.message
+);
+
+}finally{
+
+busy = false;
+
+}
+};
+
+/**********************
+ Speak
+**********************/
+speakBtn.onclick = ()=>{
+
+speechSynthesis.cancel();
+
+const u =
+new SpeechSynthesisUtterance(
+result.innerText
+);
+
+u.lang = "zh-TW";
+u.rate = 0.82;
+
+speechSynthesis.speak(u);
+
+};
+
+/**********************
+ Back
+**********************/
+backBtn.onclick = ()=>{
+
+speechSynthesis.cancel();
+
+resultPage.classList.add(
+"hidden"
+);
+
+home.classList.remove(
+"hidden"
+);
+
+};
+</script>
+
 </body>
 </html>
+```
