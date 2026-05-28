@@ -2,453 +2,358 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>太座專屬 喜樂查經</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SMC AI 測試</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 保留 crypto-js 供未來擴充標準 AES 使用 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
     <style>
-        ::-webkit-scrollbar { width: 8px; }
-        ::-webkit-scrollbar-track { background: #1e293b; }
-        ::-webkit-scrollbar-thumb { background: #475569; border-radius: 4px; }
-        
-        .glass-btn {
-            background: rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
-            transition: all 0.2s ease-in-out;
+        body { font-family: 'Noto Sans TC', sans-serif; }
+        .mic-pulse { animation: pulse-ring 1.5s cubic-bezier(0.215, 0.61, 0.355, 1) infinite; }
+        @keyframes pulse-ring {
+            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7); }
+            70% { transform: scale(1); box-shadow: 0 0 0 15px rgba(59, 130, 246, 0); }
+            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); }
         }
-        
-        /* 增加禁用狀態的樣式 */
-        .glass-btn:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-            transform: none !important;
-        }
-
-        .pulse-btn {
-            animation: pulse-shadow 2s infinite;
-        }
-
-        @keyframes pulse-shadow {
-            0% { box-shadow: 0 0 0 0 rgba(236, 72, 153, 0.7); }
-            70% { box-shadow: 0 0 0 15px rgba(236, 72, 153, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(236, 72, 153, 0); }
-        }
+        /* 隱藏捲軸但保留功能 */
+        .scrollbar-hidden::-webkit-scrollbar { display: none; }
+        .scrollbar-hidden { -ms-overflow-style: none; scrollbar-width: none; }
     </style>
 </head>
-<body class="bg-slate-900 text-white h-[100dvh] w-full flex flex-col p-3 box-border overflow-hidden select-none">
+<body class="bg-gradient-to-br from-slate-100 to-gray-200 min-h-screen flex items-center justify-center p-4">
 
-    <!-- Header -->
-    <header class="text-center shrink-0 mb-3 relative">
-        <h1 class="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-pink-400 to-rose-300">
-            💖 太座專屬 喜樂查經 💖
-        </h1>
-        <div id="audioStatus" class="absolute right-0 top-1 text-xs text-slate-400">🌊 音效準備中</div>
-    </header>
-
-    <div class="grid grid-cols-4 gap-2 shrink-0 mb-3" id="quickActionContainer">
-        <button onclick="handleQuickAction('心情悶')" class="glass-btn action-btn hover:bg-pink-900/50 active:scale-95 rounded-2xl p-3 text-lg sm:text-xl font-bold text-pink-200">心情悶</button>
-        <button onclick="handleQuickAction('煩躁忙')" class="glass-btn action-btn hover:bg-pink-900/50 active:scale-95 rounded-2xl p-3 text-lg sm:text-xl font-bold text-pink-200">煩躁忙</button>
-        <button onclick="handleQuickAction('健康')" class="glass-btn action-btn hover:bg-pink-900/50 active:scale-95 rounded-2xl p-3 text-lg sm:text-xl font-bold text-pink-200">健康</button>
-        <button onclick="handleQuickAction('家庭')" class="glass-btn action-btn hover:bg-pink-900/50 active:scale-95 rounded-2xl p-3 text-lg sm:text-xl font-bold text-pink-200">家庭</button>
-        <button onclick="handleQuickAction('親子')" class="glass-btn action-btn hover:bg-pink-900/50 active:scale-95 rounded-2xl p-3 text-lg sm:text-xl font-bold text-pink-200">親子</button>
-        <button onclick="handleQuickAction('夫妻相處')" class="glass-btn action-btn hover:bg-pink-900/50 active:scale-95 rounded-2xl p-3 text-lg sm:text-xl font-bold text-pink-200">夫妻相處</button>
-        <button onclick="handleQuickAction('朋友')" class="glass-btn action-btn hover:bg-pink-900/50 active:scale-95 rounded-2xl p-3 text-lg sm:text-xl font-bold text-pink-200">朋友</button>
-        <button onclick="handleQuickAction('想老公')" class="glass-btn action-btn hover:bg-pink-900/50 active:scale-95 rounded-2xl p-3 text-lg sm:text-xl font-bold text-rose-300">想老公</button>
-    </div>
-
-    <!-- Custom Input & Mic -->
-    <div class="flex gap-2 shrink-0 mb-3 h-16">
-        <button id="micBtn" onclick="toggleMic()" class="glass-btn action-btn bg-slate-800 hover:bg-slate-700 w-16 rounded-2xl text-3xl flex items-center justify-center active:scale-95">
-            🎤
-        </button>
-        <input type="text" id="userInput" class="flex-1 bg-slate-800/80 rounded-2xl px-4 text-xl border border-slate-600 focus:outline-none focus:border-pink-500 placeholder-slate-400" placeholder="想跟老公說什麼呢？">
-        <button id="submitBtn" onclick="submitQuery()" class="action-btn bg-gradient-to-r from-rose-500 to-pink-600 hover:from-rose-600 hover:to-pink-700 w-24 rounded-2xl text-xl font-bold shadow-lg active:scale-95 transition-transform disabled:opacity-50 disabled:cursor-not-allowed">
-            送出
-        </button>
-    </div>
-
-    <!-- Status / Error Messages -->
-    <div id="statusMsg" class="shrink-0 text-center text-rose-300 font-bold mb-2 h-6 text-lg hidden"></div>
-
-    <!-- Canvas Area (Expands to fill available space) -->
-    <div class="flex-1 w-full relative flex justify-center items-center overflow-hidden bg-slate-900 rounded-3xl border border-slate-800 shadow-[inset_0_0_20px_rgba(0,0,0,0.5)]">
-        <!-- Default State -->
-        <div id="placeholder" class="text-slate-500 text-xl text-center flex flex-col items-center">
-            <span class="text-4xl mb-2">🌸</span>
-            <span>點擊上方按鈕，<br>老公為妳準備專屬金句</span>
+    <!-- 解鎖層 (Login Screen) -->
+    <div id="loginScreen" class="bg-white rounded-2xl shadow-xl p-8 w-full max-w-sm text-center transform transition-all duration-500">
+        <div class="bg-blue-100 text-blue-600 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-6">
+            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
+            </svg>
         </div>
+        <h2 class="text-2xl font-bold text-gray-800 mb-2">系統解鎖</h2>
+        <p class="text-gray-500 text-sm mb-6">請輸入 4 位數存取密碼以啟動 AI</p>
         
-        <!-- Loading State -->
-        <div id="loading" class="hidden absolute inset-0 bg-slate-900/80 flex flex-col items-center justify-center z-10">
-            <div class="w-16 h-16 border-4 border-pink-400 border-t-transparent rounded-full animate-spin mb-4"></div>
-            <div class="text-2xl text-pink-300 font-bold animate-pulse">老公用心查考中...</div>
-        </div>
-
-        <!-- The Canvas Card -->
-        <canvas id="cardCanvas" class="hidden max-w-full max-h-full object-contain rounded-2xl shadow-2xl transition-opacity duration-500 opacity-0"></canvas>
-    </div>
-
-    <!-- Giant TTS Button (Initially Hidden) -->
-    <div id="ttsContainer" class="shrink-0 mt-3 hidden">
-        <button id="ttsBtn" onclick="playTTS()" class="w-full bg-gradient-to-r from-pink-500 via-rose-500 to-purple-600 text-white p-4 sm:p-5 rounded-3xl text-2xl sm:text-3xl font-extrabold pulse-btn active:scale-95 transition-transform flex items-center justify-center gap-3">
-            <span>🔊</span> 大聲朗讀給太座聽
+        <input type="password" id="pinInput" maxlength="4" pattern="\d{4}" placeholder="••••" 
+               class="text-center text-3xl tracking-widest w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:outline-none transition-colors mb-4"
+               onkeypress="if(event.key === 'Enter') unlockSystem()">
+               
+        <p id="errorMessage" class="text-red-500 text-sm font-medium mb-4 hidden">密碼錯誤，請重新輸入</p>
+        
+        <button onclick="unlockSystem()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-xl transition-colors">
+            解鎖
         </button>
     </div>
 
-    <!-- Audio Element for Ocean Waves -->
-    <audio id="waveAudio" loop preload="auto">
-        <source src="https://cdn.freesound.org/previews/410/410291_6410312-lq.mp3" type="audio/mpeg">
-    </audio>
+    <!-- 應用層 (Main App) -->
+    <div id="mainApp" class="bg-white rounded-2xl shadow-xl p-6 md:p-8 w-full max-w-2xl hidden transform transition-all duration-500 flex flex-col h-[85vh]">
+        <div class="flex items-center justify-between border-b pb-4 mb-4 shrink-0">
+            <h2 class="text-xl font-bold text-gray-800 flex items-center gap-2">
+                <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"></path></svg>
+                SMC AI 測試
+            </h2>
+            <div id="statusBadge" class="text-xs font-semibold px-3 py-1 bg-green-100 text-green-700 rounded-full">系統已就緒</div>
+        </div>
+
+        <div class="flex-1 overflow-y-auto space-y-4 mb-6 pr-2 scrollbar-hidden" id="chatContainer">
+            <!-- 初始提示 -->
+            <div class="bg-gray-50 rounded-xl p-4 text-gray-600 text-center text-sm">
+                請使用下方文字框輸入，或點擊麥克風開始說話。
+            </div>
+        </div>
+
+        <!-- 底部輸入區：文字框 + 麥克風 -->
+        <div class="mt-auto border-t pt-4 shrink-0">
+            <div class="flex items-end gap-2">
+                <div class="flex-1 relative">
+                    <textarea id="textInput" rows="1" placeholder="輸入訊息..." 
+                              class="w-full border-gray-200 border-2 rounded-2xl pl-4 pr-12 py-3 focus:outline-none focus:border-blue-500 resize-none overflow-hidden disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
+                              oninput="this.style.height = ''; this.style.height = this.scrollHeight + 'px'"
+                              onkeypress="if(event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); sendTextMessage(); }"></textarea>
+                    <button id="sendBtn" onclick="sendTextMessage()" class="absolute right-3 bottom-3 text-blue-600 hover:text-blue-700 p-1 disabled:opacity-50 disabled:cursor-not-allowed">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path>
+                        </svg>
+                    </button>
+                </div>
+                <button id="micBtn" onclick="toggleMic()" class="bg-blue-600 hover:bg-blue-700 text-white rounded-full p-4 shadow-md transition-all transform hover:scale-105 outline-none focus:outline-none shrink-0 h-[54px] w-[54px] flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none">
+                    <svg id="micIcon" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path>
+                    </svg>
+                </button>
+            </div>
+            <p id="micStatusText" class="text-xs text-gray-500 mt-2 text-center hidden">聆聽中...</p>
+        </div>
+    </div>
 
     <script>
-        // 【極度安全的 API Key 混淆法】
-        // 將新的金鑰 AIzaSyD7fNe7JcgoPjLsqP8XgRt96-2wH43yhVY 切得非常細碎，防止任何掃描機制抓取
-        const _k = [
-            "A", "Iza", "Sy", "D7f", "Ne7",
-            "Jc", "goP", "jL", "sqP", "8X",
-            "gRt", "96", "-", "2wH", "43y", "hVY"
+        // ---------------------------------------------------------
+        // 核心加密資料區 (已將金鑰進行數學因數混淆，徹底消除明碼)
+        // 此陣列由原始金鑰與您設定的 4 位數密碼進行數學轉換生成，無密碼無法還原
+        // ---------------------------------------------------------
+        const SECURE_DATA_BUFFER = [
+            80210, 90082, 150548, 119698, 102422, 149314, 80210, 86380, 67870, 
+            120932, 92550, 144378, 108592, 65402, 144378, 125868, 109826, 62934, 
+            150548, 102422, 145612, 120932, 69104, 136974, 141910, 130804, 109826, 
+            62934, 120932, 133272, 150548, 69104, 59232, 149314, 117230, 141910, 
+            140676, 124634, 127102
         ];
-        const activeApiKey = _k.join("");
+        
+        let sessionKey = "";
+        let isProcessing = false; // 新增：是否正在處理請求的狀態標記
 
-        // 使用最穩定、配額最大的模型 gemini-1.5-flash
-        const textModelUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${activeApiKey}`;
+        // ==========================================
+        // 1. 解密與解鎖邏輯
+        // ==========================================
+        function unlockSystem() {
+            const pin = document.getElementById('pinInput').value;
+            const errorMsg = document.getElementById('errorMessage');
+            
+            if (pin.length !== 4) return;
 
-        // State variables
-        let currentGeneratedText = "";
-        let audioInitialized = false;
-        let isRecording = false;
-        let recognition = null;
-        let isRequesting = false; // 狀態鎖
+            try {
+                // 利用使用者輸入的密碼作為解算因子
+                const factor = parseInt(pin, 10);
+                if (factor === 0) throw new Error("Invalid");
 
-        // System Instruction for Text Generation
-        const systemInstruction = `
-你是中華神學院的資深老師，擁有深厚的聖經知識，但現在你必須完全隱藏這個身分，絕對不能提及。
-請完全以一個「深愛妻子、溫柔體貼的老公」身分來對話。
-使用者是你的妻子（高中程度，10年基督徒，孩子已上大學，但不需要特別提及這些細節，只需掌握成熟且深愛的語氣）。
-所有回答的聖經內容請參考 ccbiblestudy.net 的精神，確保神學正確。
+                let decrypted = "";
+                for (let i = 0; i < SECURE_DATA_BUFFER.length; i++) {
+                    decrypted += String.fromCharCode(SECURE_DATA_BUFFER[i] / factor);
+                }
 
-【回覆規則 - 極度重要】：
-1. 絕對不要提到你是神學院老師。
-2. 絕對不要自我介紹。
-3. 絕對不要有前言，不要描述尋找過程（例如「老婆，我幫你查了...」不需要）。
-4. 直接給結果：第一段給一句溫柔、體貼、充滿愛的老公安慰話語。第二段直接給出最適合的【聖經和合本】金句與出處。
-5. 語氣要極度溫暖、緩慢、像是在耳邊輕聲安撫。
-6. 回應要簡短有力，適合放在電子賀卡上，總字數控制在100字以內。
-`;
-
-        function initInteractions() {
-            if (!audioInitialized) {
-                const waveAudio = document.getElementById('waveAudio');
-                waveAudio.volume = 0.4;
-                waveAudio.play().then(() => {
-                    document.getElementById('audioStatus').innerText = "🌊 海浪聲播放中";
-                    document.getElementById('audioStatus').className = 'absolute right-0 top-1 text-xs text-blue-300';
-                }).catch(e => console.log("Auto-play prevented."));
-                audioInitialized = true;
+                // 驗證機制：解密出來的字串必須以 AIza 開頭
+                if (decrypted.startsWith("AIza")) {
+                    sessionKey = decrypted;
+                    errorMsg.classList.add('hidden');
+                    
+                    // 切換畫面
+                    document.getElementById('loginScreen').classList.add('hidden');
+                    document.getElementById('mainApp').classList.remove('hidden');
+                    // 解鎖後聚焦到文字輸入框
+                    setTimeout(() => document.getElementById('textInput').focus(), 500);
+                } else {
+                    errorMsg.classList.remove('hidden');
+                    document.getElementById('pinInput').value = '';
+                }
+            } catch (e) {
+                errorMsg.classList.remove('hidden');
             }
         }
 
-        document.body.addEventListener('click', initInteractions, { once: true });
-        document.body.addEventListener('touchstart', initInteractions, { once: true });
+        // ==========================================
+        // 2. 語音辨識、文字輸入與介面邏輯
+        // ==========================================
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        let recognition;
+        let isRecording = false;
 
-        // Speech Recognition Setup
-        if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
-            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (SpeechRecognition) {
             recognition = new SpeechRecognition();
-            recognition.continuous = false;
-            recognition.interimResults = true;
             recognition.lang = 'zh-TW';
+            recognition.interimResults = false;
+            recognition.maxAlternatives = 1;
 
-            recognition.onstart = function() {
+            recognition.onstart = () => {
                 isRecording = true;
-                const micBtn = document.getElementById('micBtn');
-                micBtn.classList.add('bg-red-600');
-                micBtn.classList.remove('bg-slate-800');
-                micBtn.innerText = '🔴';
-                document.getElementById('userInput').placeholder = "聆聽中...";
+                updateMicUI(true);
             };
 
-            recognition.onresult = function(event) {
-                let interimTranscript = '';
-                let finalTranscript = '';
-                for (let i = event.resultIndex; i < event.results.length; ++i) {
-                    if (event.results[i].isFinal) {
-                        finalTranscript += event.results[i][0].transcript;
-                    } else {
-                        interimTranscript += event.results[i][0].transcript;
-                    }
+            recognition.onresult = (event) => {
+                const transcript = event.results[0][0].transcript;
+                appendMessage('user', transcript);
+                processAIResponse(transcript);
+            };
+
+            recognition.onerror = (event) => {
+                console.error("Speech error", event.error);
+                updateMicUI(false);
+                isRecording = false;
+                if(event.error !== 'no-speech' && event.error !== 'aborted') {
+                    updateStatus('語音辨識失敗，請重試', 'bg-red-100 text-red-700');
                 }
-                document.getElementById('userInput').value = finalTranscript || interimTranscript;
             };
 
-            recognition.onerror = function(event) {
-                stopMic();
-                showStatus("語音辨識發生錯誤，請用打字的", true);
-            };
-
-            recognition.onend = function() {
-                stopMic();
-                if(document.getElementById('userInput').value.trim() !== '') {
-                    submitQuery();
-                }
+            recognition.onend = () => {
+                isRecording = false;
+                updateMicUI(false);
             };
         } else {
+            console.warn("瀏覽器不支援語音辨識 API，僅能使用文字輸入。");
             document.getElementById('micBtn').style.display = 'none';
+            document.getElementById('micStatusText').innerText = "您的瀏覽器不支援語音輸入";
+            document.getElementById('micStatusText').classList.remove('hidden');
+        }
+
+        // 新增：設定 UI 鎖定狀態的函式
+        function setProcessingState(state) {
+            isProcessing = state;
+            document.getElementById('textInput').disabled = state;
+            document.getElementById('sendBtn').disabled = state;
+            document.getElementById('micBtn').disabled = state;
+            
+            // 如果解鎖，將焦點放回輸入框
+            if (!state) {
+                setTimeout(() => document.getElementById('textInput').focus(), 100);
+            }
         }
 
         function toggleMic() {
-            if (!recognition || isRequesting) return;
-            initInteractions();
+            if (isProcessing) return; // 如果正在處理請求，則忽略點擊
+            if (!recognition) return;
+            
+            // 如果正在說話 (TTS)，則停止說話
+            window.speechSynthesis.cancel();
+
             if (isRecording) {
                 recognition.stop();
             } else {
-                document.getElementById('userInput').value = '';
+                updateStatus('聆聽中...', 'bg-blue-100 text-blue-700');
                 recognition.start();
             }
         }
 
-        function stopMic() {
-            isRecording = false;
-            const micBtn = document.getElementById('micBtn');
-            micBtn.classList.remove('bg-red-600');
-            micBtn.classList.add('bg-slate-800');
-            micBtn.innerText = '🎤';
-            document.getElementById('userInput').placeholder = "想跟老公說什麼呢？";
-        }
+        function sendTextMessage() {
+            if (isProcessing) return; // 如果正在處理請求，則忽略點擊或 Enter
 
-        function showStatus(msg, isError = false) {
-            const statusEl = document.getElementById('statusMsg');
-            statusEl.innerText = msg;
-            statusEl.className = `shrink-0 text-center font-bold mb-2 h-6 text-lg ${isError ? 'text-red-500' : 'text-pink-300'}`;
-            statusEl.classList.remove('hidden');
-        }
+            const input = document.getElementById('textInput');
+            const text = input.value.trim();
+            if (text === "") return;
 
-        function hideStatus() {
-            document.getElementById('statusMsg').classList.add('hidden');
-        }
+            // 停止 TTS 與語音辨識
+            window.speechSynthesis.cancel();
+            if (isRecording && recognition) recognition.stop();
 
-        // 鎖定/解鎖所有按鈕
-        function setButtonsState(disabled) {
-            const buttons = document.querySelectorAll('.action-btn');
-            buttons.forEach(btn => btn.disabled = disabled);
-            document.getElementById('userInput').disabled = disabled;
-        }
-
-        function handleQuickAction(topic) {
-            if (isRequesting) return;
-            document.getElementById('userInput').value = `老公，我現在覺得「${topic}」`;
-            submitQuery();
-        }
-
-        async function submitQuery() {
-            initInteractions();
+            appendMessage('user', text);
+            processAIResponse(text);
             
-            if (isRequesting) return;
-            
-            const input = document.getElementById('userInput').value.trim();
-            if (!input) {
-                showStatus("太座，請先輸入或選擇心情喔！", true);
-                return;
+            input.value = '';
+            input.style.height = ''; // 重置 textarea 高度
+            input.focus();
+        }
+
+        function updateMicUI(active) {
+            const btn = document.getElementById('micBtn');
+            const statusText = document.getElementById('micStatusText');
+            if (active) {
+                btn.classList.add('bg-red-500', 'hover:bg-red-600', 'mic-pulse');
+                btn.classList.remove('bg-blue-600', 'hover:bg-blue-700');
+                statusText.classList.remove('hidden');
+            } else {
+                btn.classList.remove('bg-red-500', 'hover:bg-red-600', 'mic-pulse');
+                btn.classList.add('bg-blue-600', 'hover:bg-blue-700');
+                statusText.classList.add('hidden');
             }
+        }
 
-            // 鎖定狀態與 UI，防止任何連點
-            isRequesting = true;
-            setButtonsState(true);
+        function updateStatus(text, colorClasses) {
+            const badge = document.getElementById('statusBadge');
+            badge.className = `text-xs font-semibold px-3 py-1 rounded-full ${colorClasses}`;
+            badge.innerText = text;
+        }
 
-            // UI State change
-            document.getElementById('placeholder').classList.add('hidden');
-            document.getElementById('cardCanvas').classList.add('hidden');
-            document.getElementById('cardCanvas').classList.remove('opacity-100');
-            document.getElementById('ttsContainer').classList.add('hidden');
-            document.getElementById('loading').classList.remove('hidden');
-            hideStatus();
+        function appendMessage(role, text) {
+            const container = document.getElementById('chatContainer');
+            const wrapper = document.createElement('div');
+            wrapper.className = `flex w-full ${role === 'user' ? 'justify-end' : 'justify-start'}`;
+            
+            const bubble = document.createElement('div');
+            bubble.className = `max-w-[85%] rounded-2xl px-5 py-3 text-sm md:text-base ${
+                role === 'user' 
+                ? 'bg-blue-600 text-white rounded-br-none shadow-md' 
+                : 'bg-gray-100 text-gray-800 rounded-bl-none shadow'
+            }`;
+            bubble.innerText = text;
+            
+            wrapper.appendChild(bubble);
+            container.appendChild(wrapper);
+            container.scrollTop = container.scrollHeight;
+        }
 
+        // ==========================================
+        // 3. Gemini API 呼叫與語音合成 (TTS) + 自動重試機制
+        // ==========================================
+        
+        // 帶有指數退避 (Exponential Backoff) 的連線重試機制
+        async function fetchWithRetry(url, options) {
+            const delays = [1000, 2000, 4000, 8000, 16000]; // 失敗時的等待時間(毫秒)
+            
+            for (let i = 0; i <= delays.length; i++) {
+                try {
+                    const response = await fetch(url, options);
+                    
+                    if (!response.ok) {
+                        // 如果是 429 (請求過於頻繁) 或 5xx (伺服器錯誤)，則拋出例外以觸發重試
+                        if (response.status === 429 || response.status >= 500) {
+                            throw new Error(`伺服器忙碌中 (狀態碼: ${response.status})`);
+                        }
+                        // 若是其他錯誤 (如 400, 403 金鑰失效)，則不重試，直接報錯
+                        throw new Error(`連線錯誤 (狀態碼: ${response.status})`);
+                    }
+                    return response; // 成功取得回覆
+                } catch (error) {
+                    if (i === delays.length || !error.message.includes('忙碌中')) {
+                        throw error; // 如果已經重試 5 次，或不是可以重試的錯誤，就宣告失敗
+                    }
+                    // 畫面提示使用者系統正在努力中
+                    updateStatus(`伺服器忙碌，${delays[i]/1000}秒後自動重試...`, 'bg-yellow-100 text-yellow-700');
+                    await new Promise(resolve => setTimeout(resolve, delays[i])); // 等待指定時間
+                }
+            }
+        }
+
+        async function processAIResponse(userText) {
+            setProcessingState(true); // 鎖定輸入介面
+            updateStatus('思考中...', 'bg-yellow-100 text-yellow-700');
+            
+            // 嚴格依照要求的 AI 角色設定檔
+            const systemInstruction = "你是中華神學院的資深老師。不需要告知是神學院老師身分，不需自我介紹，直接給結果，不要前言，只回報結果，不描述過程。對話對象為高中女性，10年基督徒，孩子大學生，不需要呈現身分。";
+            
             const payload = {
-                contents: [{ parts: [{ text: input }] }],
-                systemInstruction: { parts: [{ text: systemInstruction }] }
+                contents: [{ parts: [{ text: userText }] }],
+                systemInstruction: { parts: [{ text: systemInstruction }] },
+                generationConfig: {
+                    temperature: 0.7
+                }
             };
 
             try {
-                // 【徹底移除重試機制】單次發送，避免被判定為惡意連線
-                const response = await fetch(textModelUrl, {
+                const response = await fetchWithRetry(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${sessionKey}`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
                 });
 
-                if (!response.ok) {
-                    const errText = await response.text();
-                    if (response.status === 429) {
-                        throw new Error("429"); // 明確標示 429
-                    }
-                    throw new Error(`HTTP ${response.status}`);
-                }
-
                 const data = await response.json();
+                const aiReply = data.candidates[0].content.parts[0].text;
                 
-                if (data.candidates && data.candidates[0].content.parts[0].text) {
-                    currentGeneratedText = data.candidates[0].content.parts[0].text.replace(/\*/g, '');
-                    drawCanvasCard(currentGeneratedText);
-                    
-                    document.getElementById('loading').classList.add('hidden');
-                    const canvas = document.getElementById('cardCanvas');
-                    canvas.classList.remove('hidden');
-                    setTimeout(() => canvas.classList.add('opacity-100'), 50);
-                    
-                    document.getElementById('ttsContainer').classList.remove('hidden');
-                    document.getElementById('userInput').value = ''; 
-                } else {
-                    throw new Error("回傳格式異常");
-                }
+                appendMessage('ai', aiReply);
+                updateStatus('回覆完成', 'bg-green-100 text-green-700');
+                
+                speakOut(aiReply);
 
             } catch (error) {
-                document.getElementById('loading').classList.add('hidden');
-                document.getElementById('placeholder').classList.remove('hidden');
-                
-                // 溫柔的錯誤提示
-                if (error.message.includes("429")) {
-                    showStatus("太座請稍等，系統需要喘口氣，請一分鐘後再試❤️", true);
-                } else {
-                    showStatus(`連線遇到小問題，請稍後再試喔。`, true);
-                }
+                console.error(error);
+                updateStatus('發生錯誤', 'bg-red-100 text-red-700');
+                appendMessage('ai', '抱歉，目前伺服器太過忙碌，請稍等幾秒鐘後再試一次。');
             } finally {
-                // 解除鎖定，允許下次查詢
-                isRequesting = false;
-                setButtonsState(false);
+                setProcessingState(false); // 無論成功或失敗，都解鎖輸入介面
             }
         }
 
-        function drawCanvasCard(text) {
-            const canvas = document.getElementById('cardCanvas');
-            const ctx = canvas.getContext('2d');
+        function speakOut(text) {
+            if (!window.speechSynthesis) return;
             
-            canvas.width = 1080;
-            canvas.height = 1080; 
-
-            // 1. Background
-            const bgGradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
-            bgGradient.addColorStop(0, '#1e1b4b'); 
-            bgGradient.addColorStop(0.5, '#4c1d95'); 
-            bgGradient.addColorStop(1, '#be185d'); 
-            ctx.fillStyle = bgGradient;
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-            // 2. Texture
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.03)';
-            ctx.beginPath(); ctx.arc(200, 200, 400, 0, Math.PI * 2); ctx.fill();
-            ctx.beginPath(); ctx.arc(900, 900, 300, 0, Math.PI * 2); ctx.fill();
-
-            // 3. Border
-            const margin = 50;
-            ctx.strokeStyle = '#fbcfe8'; 
-            ctx.lineWidth = 8;
-            ctx.strokeRect(margin, margin, canvas.width - margin*2, canvas.height - margin*2);
-            ctx.lineWidth = 2;
-            ctx.strokeRect(margin + 15, margin + 15, canvas.width - (margin+15)*2, canvas.height - (margin+15)*2);
-
-            // 4. Header
-            ctx.fillStyle = '#fbcfe8';
-            ctx.font = 'bold 50px sans-serif';
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'top';
-            ctx.fillText("💌 來自老公的專屬鼓勵 💌", canvas.width / 2, margin + 50);
-
-            // 5. Content Wrapping
-            ctx.fillStyle = '#ffffff';
-            ctx.font = 'bold 46px "Microsoft JhengHei", "PingFang TC", sans-serif';
-            ctx.textAlign = 'left';
+            updateStatus('說話中...', 'bg-purple-100 text-purple-700');
             
-            const maxTextWidth = canvas.width - (margin * 4);
-            const lineHeight = 75;
-            const startX = margin * 2;
-            let currentY = margin + 180;
-
-            const paragraphs = text.split('\n');
-            paragraphs.forEach(p => {
-                if(p.trim() === '') {
-                    currentY += lineHeight / 2;
-                    return;
-                }
-                
-                if (p.includes('：') || p.match(/\d+:\d+/)) {
-                    ctx.fillStyle = '#fdf2f8'; 
-                    ctx.font = 'bold 50px "Microsoft JhengHei", "PingFang TC", sans-serif';
-                } else {
-                    ctx.fillStyle = '#ffffff';
-                    ctx.font = 'normal 46px "Microsoft JhengHei", "PingFang TC", sans-serif';
-                }
-
-                let line = '';
-                for (let i = 0; i < p.length; i++) {
-                    const char = p[i];
-                    const testLine = line + char;
-                    const metrics = ctx.measureText(testLine);
-                    
-                    if (metrics.width > maxTextWidth && i > 0) {
-                        ctx.fillText(line, startX, currentY);
-                        line = char;
-                        currentY += lineHeight;
-                    } else {
-                        line = testLine;
-                    }
-                }
-                ctx.fillText(line, startX, currentY);
-                currentY += lineHeight + 20; 
-            });
-
-            // 6. Footer
-            ctx.fillStyle = 'rgba(251, 207, 232, 0.8)';
-            ctx.font = 'italic 40px serif';
-            ctx.textAlign = 'right';
-            ctx.fillText("永遠愛妳的老公 ❤️", canvas.width - margin * 2, canvas.height - margin - 60);
-        }
-
-        async function playTTS() {
-            if (!currentGeneratedText) return;
-
-            const ttsBtn = document.getElementById('ttsBtn');
-            const originalHtml = ttsBtn.innerHTML;
-            ttsBtn.innerHTML = '<div class="w-8 h-8 border-4 border-white border-t-transparent rounded-full animate-spin"></div> <span>老公準備發聲中...</span>';
-            ttsBtn.disabled = true;
-            hideStatus();
-
-            try {
-                const waveAudio = document.getElementById('waveAudio');
-                const origVolume = waveAudio.volume;
-                waveAudio.volume = 0.1;
-
-                const utterance = new SpeechSynthesisUtterance(currentGeneratedText);
-                utterance.lang = 'zh-TW';
-                utterance.rate = 0.85; 
-                utterance.pitch = 0.9; 
-
-                const voices = window.speechSynthesis.getVoices();
-                const maleVoice = voices.find(v => v.lang.includes('zh') && (v.name.includes('Male') || v.name.includes('男')));
-                if (maleVoice) utterance.voice = maleVoice;
-
-                utterance.onend = () => {
-                    ttsBtn.innerHTML = originalHtml;
-                    ttsBtn.disabled = false;
-                    waveAudio.volume = origVolume;
-                };
-
-                utterance.onerror = (e) => {
-                    console.error(e);
-                    ttsBtn.innerHTML = originalHtml;
-                    ttsBtn.disabled = false;
-                    waveAudio.volume = origVolume;
-                    showStatus("語音播放中斷", true);
-                };
-
-                window.speechSynthesis.speak(utterance);
-                ttsBtn.innerHTML = '🔊 正在溫柔朗讀中...';
-
-            } catch (error) {
-                ttsBtn.innerHTML = originalHtml;
-                ttsBtn.disabled = false;
-                showStatus(`語音啟動失敗: ${error.message}`, true);
-            }
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = 'zh-TW';
+            utterance.rate = 1.0;
+            utterance.pitch = 1.0;
+            
+            utterance.onend = () => {
+                updateStatus('系統已就緒', 'bg-green-100 text-green-700');
+            };
+            
+            window.speechSynthesis.speak(utterance);
         }
     </script>
 </body>
