@@ -15,25 +15,22 @@
     <div id="setup-view" class="w-full max-w-sm text-center">
         <h1 class="text-2xl font-bold mb-6 text-pink-400">親愛的玲玲，平安</h1>
         <input type="password" id="apiKey" placeholder="請貼上 API Key" class="w-full p-4 rounded-lg bg-gray-800 border border-gray-600 mb-4 text-white">
-        <button id="listBtn" class="w-full py-4 bg-pink-600 rounded-lg font-bold text-lg text-white">鎖定模型並開始</button>
+        <button id="listBtn" class="w-full py-4 bg-pink-600 rounded-lg font-bold text-lg text-white">1. 驗證並鎖定模型</button>
         <div id="status" class="mt-4 p-3 rounded hidden break-words text-sm"></div>
     </div>
 
     <!-- 主選單 -->
     <div id="main-view" class="hidden w-full max-w-sm text-center space-y-4">
         <h2 id="status-text" class="text-xl text-pink-300">今天心情如何？</h2>
+        <div id="voice-transcript" class="p-3 bg-gray-800 rounded-lg italic text-gray-400 min-h-[3rem] border border-gray-700">準備聆聽...</div>
         <div class="grid grid-cols-2 gap-3">
             <button onclick="askAI('心情悶')" class="p-4 bg-gray-800 rounded-xl">心情悶</button>
             <button onclick="askAI('煩躁忙')" class="p-4 bg-gray-800 rounded-xl">煩躁忙</button>
             <button onclick="askAI('健康')" class="p-4 bg-gray-800 rounded-xl">健康</button>
             <button onclick="askAI('家庭')" class="p-4 bg-gray-800 rounded-xl">家庭</button>
-            <button onclick="askAI('親子')" class="p-4 bg-gray-800 rounded-xl">親子</button>
-            <button onclick="askAI('夫妻相處')" class="p-4 bg-gray-800 rounded-xl">夫妻相處</button>
-            <button onclick="askAI('朋友')" class="p-4 bg-gray-800 rounded-xl">朋友</button>
-            <button onclick="askAI('想老公')" class="p-4 bg-gray-800 rounded-xl">想老公</button>
         </div>
         <button id="mic-btn" onclick="startVoice()" class="w-full py-6 bg-blue-600 rounded-2xl font-bold text-xl text-white">🎤 按下麥克風(說完畢送出)</button>
-        <button onclick="resetKey()" class="w-full py-2 bg-gray-800 rounded-xl text-gray-400 underline">重新設定 API Key</button>
+        <button onclick="resetKey()" class="w-full py-2 text-gray-500 underline text-sm">重新設定 API Key</button>
     </div>
 
     <!-- 結果頁 -->
@@ -43,7 +40,7 @@
             <div id="result-content" class="text-lg leading-relaxed"></div>
         </div>
         <div class="space-y-3">
-            <button id="speak-toggle" onclick="toggleSpeak()" class="w-full py-5 bg-green-600 rounded-2xl font-bold text-xl text-white">🔊 大聲朗讀</button>
+            <button id="speak-toggle" onclick="toggleSpeak()" class="w-full py-5 bg-green-600 rounded-2xl font-bold text-xl text-white">🔊 播放 / 暫停朗讀</button>
             <button onclick="showMain()" class="w-full py-5 bg-gray-700 rounded-2xl font-bold text-xl text-white">❤️ 返回</button>
         </div>
     </div>
@@ -51,40 +48,32 @@
     <script type="module">
         import { GoogleGenerativeAI } from "@google/generative-ai";
         
-        let model;
+        let genAI, model, isPaused = false;
         const UI = {
             status: document.getElementById('status'),
             showStatus(msg, css) { this.status.textContent = msg; this.status.className = 'mt-4 p-3 rounded block ' + css; },
             hide() { document.getElementById('setup-view').classList.add('hidden'); document.getElementById('main-view').classList.remove('hidden'); }
         };
 
-        // 自動載入邏輯
-        const savedKey = localStorage.getItem('gemini_key');
-        if (savedKey) {
-            initializeModel(savedKey, false);
-        }
-
-        async function initializeModel(key, shouldSave) {
-            try {
-                UI.showStatus('正在驗證模型...', 'bg-yellow-900 text-yellow-200');
-                const genAI = new GoogleGenerativeAI(key);
+        window.onload = () => {
+            const savedKey = localStorage.getItem('gemini_key');
+            if (savedKey) {
+                genAI = new GoogleGenerativeAI(savedKey);
                 model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
-                await model.generateContent("Hi"); // 驗證連線
-                if (shouldSave) localStorage.setItem('gemini_key', key);
                 UI.hide();
-            } catch (e) {
-                UI.showStatus('驗證失敗: ' + e.message, 'bg-red-900 text-red-200');
-                localStorage.removeItem('gemini_key');
             }
-        }
+        };
 
-        document.getElementById('listBtn').onclick = () => initializeModel(document.getElementById('apiKey').value.trim(), true);
-
-        window.resetKey = () => {
-            localStorage.removeItem('gemini_key');
-            document.getElementById('setup-view').classList.remove('hidden');
-            document.getElementById('main-view').classList.add('hidden');
-            document.getElementById('result-view').classList.add('hidden');
+        document.getElementById('listBtn').onclick = async () => {
+            const key = document.getElementById('apiKey').value.trim();
+            if (!key) return UI.showStatus('請輸入 API Key', 'bg-red-900 text-red-200');
+            try {
+                genAI = new GoogleGenerativeAI(key);
+                model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+                await model.generateContent("Hi");
+                localStorage.setItem('gemini_key', key);
+                UI.hide();
+            } catch (e) { UI.showStatus('錯誤: ' + e.message, 'bg-red-900 text-red-200'); }
         };
 
         window.askAI = async (query) => {
@@ -92,39 +81,44 @@
             document.getElementById('result-view').classList.remove('hidden');
             const contentDiv = document.getElementById('result-content');
             contentDiv.innerText = "老公正在為妳求告...";
-            
             try {
-                const result = await model.generateContent(`你是老公，用溫柔語氣安慰並給予金句（合和本），針對「${query}」，約150字。開頭：親愛的玲玲 平安。`);
+                const prompt = `你是老公，用溫柔語氣安慰並給予金句（合和本），針對「${query}」，約150字。開頭：親愛的玲玲 平安。直接給結果，不要前言。`;
+                const result = await model.generateContent(prompt);
                 contentDiv.innerText = result.response.text();
-            } catch (e) {
-                contentDiv.innerText = "生成失敗: " + e.message;
-            }
+            } catch (e) { contentDiv.innerText = "生成失敗: " + e.message; }
         };
 
         window.startVoice = () => {
             const rec = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
             rec.lang = 'zh-TW';
+            rec.interimResults = true; // 即時顯示
             rec.onresult = (e) => {
                 const text = Array.from(e.results).map(r => r[0].transcript).join('');
+                document.getElementById('voice-transcript').innerText = text;
                 if(text.includes('完畢')) window.askAI(text.replace('完畢', ''));
             };
             rec.start();
         };
 
         window.toggleSpeak = () => {
-            window.speechSynthesis.cancel();
-            const msg = new SpeechSynthesisUtterance(document.getElementById('result-content').innerText);
-            // 強制設定男聲，低沉溫柔
-            const voices = window.speechSynthesis.getVoices();
-            msg.voice = voices.find(v => v.name.includes('男') || v.name.toLowerCase().includes('male')) || voices[0];
-            msg.rate = 0.7;
-            msg.pitch = 0.6;
-            window.speechSynthesis.speak(msg);
+            if (window.speechSynthesis.speaking) {
+                if (window.speechSynthesis.paused) {
+                    window.speechSynthesis.resume();
+                } else {
+                    window.speechSynthesis.pause();
+                }
+            } else {
+                const msg = new SpeechSynthesisUtterance(document.getElementById('result-content').innerText);
+                msg.rate = 0.7;
+                window.speechSynthesis.speak(msg);
+            }
         };
 
+        window.resetKey = () => { localStorage.removeItem('gemini_key'); location.reload(); };
         window.showMain = () => {
             document.getElementById('result-view').classList.add('hidden');
             document.getElementById('main-view').classList.remove('hidden');
+            window.speechSynthesis.cancel();
         };
     </script>
 </body>
