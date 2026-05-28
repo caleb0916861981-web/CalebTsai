@@ -2,366 +2,105 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SMC AI 測試</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>太座喜樂查經</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- 保留 crypto-js 供未來擴充標準 AES 使用 -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
     <style>
-        body { font-family: 'Noto Sans TC', sans-serif; }
-        .mic-pulse { animation: pulse-ring 1.5s cubic-bezier(0.215, 0.61, 0.355, 1) infinite; }
-        @keyframes pulse-ring {
-            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7); }
-            70% { transform: scale(1); box-shadow: 0 0 0 15px rgba(59, 130, 246, 0); }
-            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); }
-        }
-        /* 隱藏捲軸但保留功能 */
-        .scrollbar-hidden::-webkit-scrollbar { display: none; }
-        .scrollbar-hidden { -ms-overflow-style: none; scrollbar-width: none; }
+        html, body { overflow: hidden; height: 100%; width: 100%; position: fixed; touch-action: manipulation; }
+        .card-glow { box-shadow: 0 0 30px rgba(251, 191, 36, 0.2); }
     </style>
 </head>
-<body class="bg-gradient-to-br from-slate-100 to-gray-200 min-h-screen flex items-center justify-center p-4">
+<body class="bg-slate-950 text-slate-100 flex flex-col p-4 h-full">
 
-    <!-- 解鎖層 (Login Screen) -->
-    <div id="loginScreen" class="bg-white rounded-2xl shadow-xl p-8 w-full max-w-sm text-center transform transition-all duration-500">
-        <div class="bg-blue-100 text-blue-600 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-6">
-            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
-            </svg>
-        </div>
-        <h2 class="text-2xl font-bold text-gray-800 mb-2">系統解鎖</h2>
-        <p class="text-gray-500 text-sm mb-6">請輸入 4 位數存取密碼以啟動 AI</p>
-        
-        <input type="password" id="pinInput" maxlength="4" pattern="\d{4}" placeholder="••••" 
-               class="text-center text-3xl tracking-widest w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:outline-none transition-colors mb-4"
-               onkeypress="if(event.key === 'Enter') unlockSystem()">
-               
-        <p id="errorMessage" class="text-red-500 text-sm font-medium mb-4 hidden">密碼錯誤，請重新輸入</p>
-        
-        <button onclick="unlockSystem()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-xl transition-colors">
-            解鎖
-        </button>
+    <header class="h-[10%] flex items-center justify-between">
+        <h1 class="text-xl font-bold text-amber-400 tracking-wider">太座喜樂查經</h1>
+        <button onclick="openKeyModal()" class="text-2xl p-2">⚙️</button>
+    </header>
+
+    <div class="h-[20%] grid grid-cols-4 gap-2 py-2">
+        <button onclick="handleQuickSearch('心情悶')" class="bg-slate-800 rounded-lg text-xs font-bold border border-slate-700">心情悶</button>
+        <button onclick="handleQuickSearch('煩躁忙')" class="bg-slate-800 rounded-lg text-xs font-bold border border-slate-700">煩躁忙</button>
+        <button onclick="handleQuickSearch('健康')" class="bg-slate-800 rounded-lg text-xs font-bold border border-slate-700">健康</button>
+        <button onclick="handleQuickSearch('家庭')" class="bg-slate-800 rounded-lg text-xs font-bold border border-slate-700">家庭</button>
     </div>
 
-    <!-- 應用層 (Main App) -->
-    <div id="mainApp" class="bg-white rounded-2xl shadow-xl p-6 md:p-8 w-full max-w-2xl hidden transform transition-all duration-500 flex flex-col h-[85vh]">
-        <div class="flex items-center justify-between border-b pb-4 mb-4 shrink-0">
-            <h2 class="text-xl font-bold text-gray-800 flex items-center gap-2">
-                <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"></path></svg>
-                SMC AI 測試
-            </h2>
-            <div id="statusBadge" class="text-xs font-semibold px-3 py-1 bg-green-100 text-green-700 rounded-full">系統已就緒</div>
+    <div class="h-[45%] flex flex-col justify-center">
+        <div id="card" class="card-glow w-full h-full rounded-2xl bg-slate-900 border border-slate-800 p-6 flex flex-col justify-center text-center">
+            <p id="msg" class="text-sm leading-relaxed text-slate-200">親愛的，點選上方分類或按下麥克風，讓老公用神的話語陪伴妳。</p>
+            <p id="verse" class="text-xs text-amber-400 mt-4 italic font-serif"></p>
         </div>
+    </div>
 
-        <div class="flex-1 overflow-y-auto space-y-4 mb-6 pr-2 scrollbar-hidden" id="chatContainer">
-            <!-- 初始提示 -->
-            <div class="bg-gray-50 rounded-xl p-4 text-gray-600 text-center text-sm">
-                請使用下方文字框輸入，或點擊麥克風開始說話。
-            </div>
-        </div>
+    <div class="h-[25%] flex flex-col gap-2 pt-4">
+        <button id="ttsBtn" onclick="readAloud()" class="hidden w-full bg-pink-700 py-4 rounded-xl font-bold text-sm shadow-lg">🎙️ 朗讀給太座聽</button>
+        <button onclick="startVoice()" id="micBtn" class="w-full bg-slate-800 py-4 rounded-xl text-sm font-bold border border-slate-700">🎤 跟老公說說話</button>
+    </div>
 
-        <!-- 底部輸入區：文字框 + 麥克風 -->
-        <div class="mt-auto border-t pt-4 shrink-0">
-            <div class="flex items-end gap-2">
-                <div class="flex-1 relative">
-                    <textarea id="textInput" rows="1" placeholder="輸入訊息..." 
-                              class="w-full border-gray-200 border-2 rounded-2xl pl-4 pr-12 py-3 focus:outline-none focus:border-blue-500 resize-none overflow-hidden disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
-                              oninput="this.style.height = ''; this.style.height = this.scrollHeight + 'px'"
-                              onkeypress="if(event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); sendTextMessage(); }"></textarea>
-                    <button id="sendBtn" onclick="sendTextMessage()" class="absolute right-3 bottom-3 text-blue-600 hover:text-blue-700 p-1 disabled:opacity-50 disabled:cursor-not-allowed">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path>
-                        </svg>
-                    </button>
-                </div>
-                <button id="micBtn" onclick="toggleMic()" class="bg-blue-600 hover:bg-blue-700 text-white rounded-full p-4 shadow-md transition-all transform hover:scale-105 outline-none focus:outline-none shrink-0 h-[54px] w-[54px] flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none">
-                    <svg id="micIcon" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path>
-                    </svg>
-                </button>
-            </div>
-            <p id="micStatusText" class="text-xs text-gray-500 mt-2 text-center hidden">聆聽中...</p>
+    <div id="keyModal" class="hidden fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-6">
+        <div class="bg-slate-900 p-6 rounded-2xl w-full max-w-sm border border-slate-700">
+            <h3 class="text-amber-400 mb-4 font-bold">API Key 設定</h3>
+            <input type="password" id="apiKeyInput" class="w-full bg-black p-3 rounded mb-4 text-white border border-slate-600" placeholder="AIza...">
+            <button onclick="saveKey()" class="w-full bg-amber-600 py-3 rounded text-white font-bold">確認儲存</button>
         </div>
     </div>
 
     <script>
-        // ---------------------------------------------------------
-        // 核心加密資料區 (已將金鑰進行數學因數混淆，徹底消除明碼)
-        // 此陣列由原始金鑰與您設定的 4 位數密碼進行數學轉換生成，無密碼無法還原
-        // ---------------------------------------------------------
-        const SECURE_DATA_BUFFER = [
-            80210, 90082, 150548, 119698, 102422, 149314, 80210, 86380, 67870, 
-            120932, 92550, 144378, 108592, 65402, 144378, 125868, 109826, 62934, 
-            150548, 102422, 145612, 120932, 69104, 136974, 141910, 130804, 109826, 
-            62934, 120932, 133272, 150548, 69104, 59232, 149314, 117230, 141910, 
-            140676, 124634, 127102
-        ];
-        
-        let sessionKey = "";
-        let isProcessing = false;
+        let apiKey = localStorage.getItem('wife_bible_key') || "";
+        let lastMsg = "", lastVerse = "";
 
-        // ==========================================
-        // 1. 解密與解鎖邏輯
-        // ==========================================
-        function unlockSystem() {
-            const pin = document.getElementById('pinInput').value;
-            const errorMsg = document.getElementById('errorMessage');
+        function openKeyModal() { document.getElementById('keyModal').classList.remove('hidden'); }
+        function saveKey() { apiKey = document.getElementById('apiKeyInput').value.trim(); localStorage.setItem('wife_bible_key', apiKey); document.getElementById('keyModal').classList.add('hidden'); }
+
+        async function fetchAI(text, retry = 0) {
+            if (!apiKey) return openKeyModal();
+            const msgEl = document.getElementById('msg');
+            msgEl.textContent = "老公正在查經，請稍候...";
             
-            if (pin.length !== 4) return;
-
+            // 修正：將模型更新為 gemini-2.5-flash，這是目前穩定的端點版本
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+            
             try {
-                const factor = parseInt(pin, 10);
-                if (factor === 0) throw new Error("Invalid");
-
-                let decrypted = "";
-                for (let i = 0; i < SECURE_DATA_BUFFER.length; i++) {
-                    decrypted += String.fromCharCode(SECURE_DATA_BUFFER[i] / factor);
-                }
-
-                if (decrypted.startsWith("AIza")) {
-                    sessionKey = decrypted;
-                    errorMsg.classList.add('hidden');
-                    
-                    document.getElementById('loginScreen').classList.add('hidden');
-                    document.getElementById('mainApp').classList.remove('hidden');
-                    setTimeout(() => document.getElementById('textInput').focus(), 500);
-                } else {
-                    errorMsg.classList.remove('hidden');
-                    document.getElementById('pinInput').value = '';
-                }
-            } catch (e) {
-                errorMsg.classList.remove('hidden');
-            }
-        }
-
-        // ==========================================
-        // 2. 語音辨識、文字輸入與介面邏輯
-        // ==========================================
-        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-        let recognition;
-        let isRecording = false;
-
-        if (SpeechRecognition) {
-            recognition = new SpeechRecognition();
-            recognition.lang = 'zh-TW';
-            recognition.interimResults = false;
-            recognition.maxAlternatives = 1;
-
-            recognition.onstart = () => {
-                isRecording = true;
-                updateMicUI(true);
-            };
-
-            recognition.onresult = (event) => {
-                const transcript = event.results[0][0].transcript;
-                appendMessage('user', transcript);
-                processAIResponse(transcript);
-            };
-
-            recognition.onerror = (event) => {
-                console.error("Speech error", event.error);
-                updateMicUI(false);
-                isRecording = false;
-                if(event.error !== 'no-speech' && event.error !== 'aborted') {
-                    updateStatus('語音辨識失敗，請重試', 'bg-red-100 text-red-700');
-                }
-            };
-
-            recognition.onend = () => {
-                isRecording = false;
-                updateMicUI(false);
-            };
-        } else {
-            document.getElementById('micBtn').style.display = 'none';
-            document.getElementById('micStatusText').innerText = "您的瀏覽器不支援語音輸入";
-            document.getElementById('micStatusText').classList.remove('hidden');
-        }
-
-        function setProcessingState(state) {
-            isProcessing = state;
-            document.getElementById('textInput').disabled = state;
-            document.getElementById('sendBtn').disabled = state;
-            document.getElementById('micBtn').disabled = state;
-            
-            if (!state) {
-                setTimeout(() => document.getElementById('textInput').focus(), 100);
-            }
-        }
-
-        function toggleMic() {
-            if (isProcessing) return;
-            if (!recognition) return;
-            
-            window.speechSynthesis.cancel();
-
-            if (isRecording) {
-                recognition.stop();
-            } else {
-                updateStatus('聆聽中...', 'bg-blue-100 text-blue-700');
-                recognition.start();
-            }
-        }
-
-        function sendTextMessage() {
-            if (isProcessing) return;
-
-            const input = document.getElementById('textInput');
-            const text = input.value.trim();
-            if (text === "") return;
-
-            window.speechSynthesis.cancel();
-            if (isRecording && recognition) recognition.stop();
-
-            appendMessage('user', text);
-            processAIResponse(text);
-            
-            input.value = '';
-            input.style.height = ''; 
-            input.focus();
-        }
-
-        function updateMicUI(active) {
-            const btn = document.getElementById('micBtn');
-            const statusText = document.getElementById('micStatusText');
-            if (active) {
-                btn.classList.add('bg-red-500', 'hover:bg-red-600', 'mic-pulse');
-                btn.classList.remove('bg-blue-600', 'hover:bg-blue-700');
-                statusText.classList.remove('hidden');
-            } else {
-                btn.classList.remove('bg-red-500', 'hover:bg-red-600', 'mic-pulse');
-                btn.classList.add('bg-blue-600', 'hover:bg-blue-700');
-                statusText.classList.add('hidden');
-            }
-        }
-
-        function updateStatus(text, colorClasses) {
-            const badge = document.getElementById('statusBadge');
-            badge.className = `text-xs font-semibold px-3 py-1 rounded-full ${colorClasses}`;
-            badge.innerText = text;
-        }
-
-        function appendMessage(role, text) {
-            const container = document.getElementById('chatContainer');
-            const wrapper = document.createElement('div');
-            wrapper.className = `flex w-full ${role === 'user' ? 'justify-end' : 'justify-start'}`;
-            
-            const bubble = document.createElement('div');
-            bubble.className = `max-w-[85%] rounded-2xl px-5 py-3 text-sm md:text-base ${
-                role === 'user' 
-                ? 'bg-blue-600 text-white rounded-br-none shadow-md' 
-                : 'bg-red-50 text-gray-800 rounded-bl-none shadow border border-red-100' // 如果是系統錯誤，背景稍作調整
-            }`;
-            
-            if (role === 'ai') bubble.className = bubble.className.replace('bg-red-50', 'bg-gray-100').replace('border-red-100', 'border-transparent');
-
-            bubble.innerText = text;
-            
-            wrapper.appendChild(bubble);
-            container.appendChild(wrapper);
-            container.scrollTop = container.scrollHeight;
-        }
-
-        // ==========================================
-        // 3. Gemini API 呼叫與語音合成 (TTS) + 強化偵錯版
-        // ==========================================
-        
-        async function fetchWithRetry(url, options) {
-            const delays = [1000, 2000, 4000, 8000, 16000];
-            
-            for (let i = 0; i <= delays.length; i++) {
-                try {
-                    const response = await fetch(url, options);
-                    
-                    if (!response.ok) {
-                        let errorDetails = '';
-                        try {
-                            // 嘗試解析 Google 傳回的詳細錯誤訊息
-                            const errorData = await response.json();
-                            errorDetails = errorData.error ? errorData.error.message : '';
-                        } catch(e) {}
-                        
-                        if (response.status === 429 || response.status >= 500) {
-                            throw new Error(`伺服器忙碌中 (狀態碼: ${response.status}) - ${errorDetails}`);
-                        }
-                        // 若是 400 或 403 錯誤，直接拋出不重試
-                        throw new Error(`連線被拒絕 (狀態碼: ${response.status}) - ${errorDetails || '權限設定或參數錯誤'}`);
-                    }
-                    return response; // 成功
-                } catch (error) {
-                    // 如果是因為 CORS 或網域被阻擋，fetch 會直接拋出 TypeError
-                    if (error.name === 'TypeError' && error.message === 'Failed to fetch') {
-                        throw new Error('網路請求被瀏覽器攔截！可能是您的 API 金鑰設定了「網域限制」但沒有將 GitHub Pages 加入白名單，或是被瀏覽器的擋廣告套件攔截。');
-                    }
-                    
-                    if (i === delays.length || !error.message.includes('忙碌中')) {
-                        throw error; 
-                    }
-                    updateStatus(`伺服器忙碌，${delays[i]/1000}秒後重試...`, 'bg-yellow-100 text-yellow-700');
-                    await new Promise(resolve => setTimeout(resolve, delays[i]));
-                }
-            }
-        }
-
-        async function processAIResponse(userText) {
-            setProcessingState(true);
-            updateStatus('思考中...', 'bg-yellow-100 text-yellow-700');
-            
-            const systemInstruction = "你是中華神學院的資深老師。不需要告知是神學院老師身分，不需自我介紹，直接給結果，不要前言，只回報結果，不描述過程。對話對象為高中女性，10年基督徒，孩子大學生，不需要呈現身分。";
-            
-            const payload = {
-                contents: [{ parts: [{ text: userText }] }],
-                systemInstruction: { parts: [{ text: systemInstruction }] },
-                generationConfig: {
-                    temperature: 0.7
-                }
-            };
-
-            try {
-                const response = await fetchWithRetry(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${sessionKey}`, {
+                const response = await fetch(url, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
+                    body: JSON.stringify({
+                        contents: [{ parts: [{ text: `作為老公，請給太太溫柔的安慰，並引用一句聖經。格式：安慰內容[SPLIT]聖經金句。問題：${text}` }] }]
+                    })
                 });
 
-                const data = await response.json();
-                const aiReply = data.candidates[0].content.parts[0].text;
-                
-                appendMessage('ai', aiReply);
-                updateStatus('回覆完成', 'bg-green-100 text-green-700');
-                speakOut(aiReply);
-
-            } catch (error) {
-                console.error("詳細錯誤紀錄：", error);
-                updateStatus('連線失敗', 'bg-red-100 text-red-700');
-                
-                // 將詳細的技術錯誤轉化為白話文顯示給使用者
-                let friendlyMsg = error.message;
-                if (error.message.includes('忙碌中') || error.message.includes('429')) {
-                    friendlyMsg = '目前伺服器太過忙碌，已觸發 Google 免費版「每分鐘最多 15 次」的保護限制。請等待 1 分鐘後再次送出即可。';
+                if (!response.ok) {
+                    const errData = await response.json().catch(() => ({}));
+                    throw new Error(`錯誤碼: ${response.status} - ${errData.error?.message || '請確認 API 金鑰是否有效'}`);
                 }
-                
-                appendMessage('system', `⚠️ 系統提示：${friendlyMsg}`);
-            } finally {
-                setProcessingState(false);
+
+                const data = await response.json();
+                const parts = data.candidates[0].content.parts[0].text.split("[SPLIT]");
+                lastMsg = parts[0]; lastVerse = parts[1];
+                msgEl.textContent = lastMsg;
+                document.getElementById('verse').textContent = lastVerse;
+                document.getElementById('ttsBtn').classList.remove('hidden');
+            } catch (err) {
+                if (retry < 2) {
+                    setTimeout(() => fetchAI(text, retry + 1), 1000);
+                } else {
+                    msgEl.textContent = "連線異常：" + err.message;
+                }
             }
         }
 
-        function speakOut(text) {
-            if (!window.speechSynthesis) return;
-            
-            updateStatus('說話中...', 'bg-purple-100 text-purple-700');
-            
-            const utterance = new SpeechSynthesisUtterance(text);
-            utterance.lang = 'zh-TW';
-            utterance.rate = 1.0;
-            utterance.pitch = 1.0;
-            
-            utterance.onend = () => {
-                updateStatus('系統已就緒', 'bg-green-100 text-green-700');
-            };
-            
-            window.speechSynthesis.speak(utterance);
+        function handleQuickSearch(f) { fetchAI(`我現在覺得${f}`); }
+        
+        function readAloud() {
+            const u = new SpeechSynthesisUtterance(`親愛的，${lastMsg}。${lastVerse}`);
+            u.lang = 'zh-TW';
+            window.speechSynthesis.speak(u);
+        }
+
+        function startVoice() {
+            const rec = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+            rec.lang = 'zh-TW';
+            rec.onresult = (e) => fetchAI(e.results[0][0].transcript);
+            rec.start();
         }
     </script>
 </body>
