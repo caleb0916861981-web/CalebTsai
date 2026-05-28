@@ -23,17 +23,17 @@
     <div id="main-view" class="hidden w-full max-w-sm text-center space-y-4">
         <h2 id="status-text" class="text-xl text-pink-300">今天心情如何？</h2>
         <div class="grid grid-cols-2 gap-3">
-            <button onclick="askAI('心情悶')" class="p-4 bg-gray-800 rounded-xl hover:bg-gray-700 transition">心情悶</button>
-            <button onclick="askAI('煩躁忙')" class="p-4 bg-gray-800 rounded-xl hover:bg-gray-700 transition">煩躁忙</button>
-            <button onclick="askAI('健康')" class="p-4 bg-gray-800 rounded-xl hover:bg-gray-700 transition">健康</button>
-            <button onclick="askAI('家庭')" class="p-4 bg-gray-800 rounded-xl hover:bg-gray-700 transition">家庭</button>
-            <button onclick="askAI('親子')" class="p-4 bg-gray-800 rounded-xl hover:bg-gray-700 transition">親子</button>
-            <button onclick="askAI('夫妻相處')" class="p-4 bg-gray-800 rounded-xl hover:bg-gray-700 transition">夫妻相處</button>
-            <button onclick="askAI('朋友')" class="p-4 bg-gray-800 rounded-xl hover:bg-gray-700 transition">朋友</button>
-            <button onclick="askAI('想老公')" class="p-4 bg-gray-800 rounded-xl hover:bg-gray-700 transition">想老公</button>
+            <button onclick="askAI('心情悶')" class="p-4 bg-gray-800 rounded-xl hover:bg-gray-700">心情悶</button>
+            <button onclick="askAI('煩躁忙')" class="p-4 bg-gray-800 rounded-xl hover:bg-gray-700">煩躁忙</button>
+            <button onclick="askAI('健康')" class="p-4 bg-gray-800 rounded-xl hover:bg-gray-700">健康</button>
+            <button onclick="askAI('家庭')" class="p-4 bg-gray-800 rounded-xl hover:bg-gray-700">家庭</button>
+            <button onclick="askAI('親子')" class="p-4 bg-gray-800 rounded-xl hover:bg-gray-700">親子</button>
+            <button onclick="askAI('夫妻相處')" class="p-4 bg-gray-800 rounded-xl hover:bg-gray-700">夫妻相處</button>
+            <button onclick="askAI('朋友')" class="p-4 bg-gray-800 rounded-xl hover:bg-gray-700">朋友</button>
+            <button onclick="askAI('想老公')" class="p-4 bg-gray-800 rounded-xl hover:bg-gray-700">想老公</button>
         </div>
-        <button id="mic-btn" onclick="startVoice()" class="w-full py-6 bg-blue-600 rounded-2xl font-bold text-xl text-white">🎤 按下麥克風(說完畢送出)</button>
-        <button onclick="localStorage.clear(); location.reload();" class="text-gray-500 text-sm py-2">更換 API Key</button>
+        <button id="mic-btn" onclick="startVoice()" class="w-full py-6 bg-blue-600 rounded-2xl font-bold text-xl text-white">🎤 麥克風輸入(說完畢送出)</button>
+        <button onclick="localStorage.clear(); location.reload();" class="text-gray-500 text-sm py-2">重設 API Key</button>
     </div>
 
     <!-- 結果頁 -->
@@ -43,8 +43,8 @@
             <div id="result-content" class="text-lg leading-relaxed whitespace-pre-line"></div>
         </div>
         <div class="space-y-3">
-            <button id="speak-toggle" onclick="toggleSpeak()" class="w-full py-5 bg-green-600 rounded-2xl font-bold text-xl text-white">🔊 大聲朗讀</button>
-            <button onclick="showMain()" class="w-full py-5 bg-gray-700 rounded-2xl font-bold text-xl text-white">❤️ 返回查詢</button>
+            <button id="speak-toggle" onclick="toggleSpeak()" class="w-full py-5 bg-green-600 rounded-2xl font-bold text-xl text-white">🔊 大聲朗讀給太座聽</button>
+            <button onclick="showMain()" class="w-full py-5 bg-gray-700 rounded-2xl font-bold text-xl text-white">❤️ 返回</button>
         </div>
     </div>
 
@@ -58,21 +58,27 @@
             hideSetup() { document.getElementById('setup-view').classList.add('hidden'); document.getElementById('main-view').classList.remove('hidden'); }
         };
 
-        const initTester = async (key) => {
-            const sanitizedKey = key.replace(/[^\x00-\x7F]/g, "").trim();
-            const genAI = new GoogleGenerativeAI(sanitizedKey);
-            model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
-            localStorage.setItem('gemini_key', sanitizedKey);
-            UI.hideSetup();
-        };
-
         document.getElementById('listBtn').onclick = async () => {
-            const key = document.getElementById('apiKey').value.trim();
-            if (!key) return UI.showStatus('請輸入 API Key', 'bg-red-900 text-red-200');
+            const rawKey = document.getElementById('apiKey').value.trim();
+            const sanitizedKey = rawKey.replace(/[\u0000-\u001F\u007F-\u009F\s]/g, ""); // 強力移除所有非法字元
+            if (!sanitizedKey) return UI.showStatus('請輸入正確的 API Key', 'bg-red-900 text-red-200');
+            
             try {
-                await initTester(key);
+                UI.showStatus('正在測試連線...', 'bg-yellow-900 text-yellow-200');
+                const genAI = new GoogleGenerativeAI(sanitizedKey);
+                // 優先嘗試您的目標模型，若 404/401 則自動備援至 1.5-flash
+                try {
+                    model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+                    await model.generateContent("Hi");
+                } catch(e) {
+                    model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+                    await model.generateContent("Hi");
+                }
+                
+                localStorage.setItem('gemini_key', sanitizedKey);
+                UI.hideSetup();
             } catch (e) {
-                UI.showStatus('連線測試失敗: ' + e.message, 'bg-red-900 text-red-200');
+                UI.showStatus('連線失敗 (401/403): ' + e.message + '。請確保 Key 正確且有權限。', 'bg-red-900 text-red-200');
             }
         };
 
@@ -83,8 +89,7 @@
             contentDiv.innerText = "老公正在為妳求告...";
             
             try {
-                // 強制要求約 150 字
-                const result = await model.generateContent(`你是老公，用溫柔親切的語氣，參考 https://ccbiblestudy.net/index-T.htm 的神學背景，安慰「${query}」並給予聖經金句。要求總字數精確控制在 150 字左右。開頭：親愛的玲玲 平安。直接給內容，不需自我介紹。`);
+                const result = await model.generateContent(`你是老公，用溫柔語氣安慰並給予金句（合和本），針對「${query}」。開頭：親愛的玲玲 平安。約150字，不需自我介紹。`);
                 contentDiv.innerText = result.response.text();
             } catch (e) {
                 contentDiv.innerText = "生成失敗: " + e.message;
@@ -102,32 +107,24 @@
         };
 
         window.toggleSpeak = () => {
-            if (window.speechSynthesis.paused) {
-                window.speechSynthesis.resume();
-                document.getElementById('speak-toggle').innerText = "⏸️ 暫停朗讀";
-            } else if (window.speechSynthesis.speaking) {
-                window.speechSynthesis.pause();
-                document.getElementById('speak-toggle').innerText = "▶️ 繼續朗讀";
-            } else {
-                const msg = new SpeechSynthesisUtterance(document.getElementById('result-content').innerText);
-                const voices = window.speechSynthesis.getVoices();
-                msg.voice = voices.find(v => v.name.includes('男') || v.name.includes('Male')) || voices[0];
-                msg.rate = 0.65; // 緩慢親切
-                msg.onend = () => document.getElementById('speak-toggle').innerText = "🔊 大聲朗讀";
-                window.speechSynthesis.speak(msg);
-                document.getElementById('speak-toggle').innerText = "⏸️ 暫停朗讀";
-            }
+            const msg = new SpeechSynthesisUtterance(document.getElementById('result-content').innerText);
+            const voices = window.speechSynthesis.getVoices();
+            msg.voice = voices.find(v => v.name.includes('男') || v.name.includes('Male')) || voices[0];
+            msg.rate = 0.65;
+            window.speechSynthesis.speak(msg);
         };
 
         window.showMain = () => {
-            window.speechSynthesis.cancel();
             document.getElementById('result-view').classList.add('hidden');
             document.getElementById('main-view').classList.remove('hidden');
         };
 
         // 自動載入邏輯
         const savedKey = localStorage.getItem('gemini_key');
-        if (savedKey) initTester(savedKey);
+        if (savedKey) {
+            document.getElementById('apiKey').value = savedKey;
+            document.getElementById('listBtn').click();
+        }
     </script>
 </body>
 </html>
