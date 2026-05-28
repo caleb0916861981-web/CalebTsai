@@ -54,7 +54,7 @@
         async function fetchAI(text, retry = 0) {
             if (!apiKey) return openKeyModal();
             const msgEl = document.getElementById('msg');
-            msgEl.textContent = "老公正在查經，請稍候...";
+            msgEl.textContent = "查經中，請稍候...";
             
             // 修正：將模型更新為 gemini-2.5-flash，這是目前穩定的端點版本
             const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
