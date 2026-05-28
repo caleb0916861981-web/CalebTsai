@@ -8,43 +8,37 @@
     <script type="importmap">
         { "imports": { "@google/generative-ai": "https://esm.run/@google/generative-ai" } }
     </script>
-    <style>
-        body { background-color: #121212; color: #e0e0e0; font-family: sans-serif; }
-        .loading-spinner { border: 4px solid #374151; border-top: 4px solid #db2777; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        button:disabled { opacity: 0.5; }
-    </style>
 </head>
-<body class="h-full flex flex-col items-center justify-center p-4">
+<body class="h-full flex flex-col items-center justify-center p-4 bg-gray-900 text-white">
 
     <!-- 設定頁 -->
     <div id="setup-view" class="w-full max-w-sm text-center">
         <h1 class="text-2xl font-bold mb-6 text-pink-400">親愛的玲玲，平安</h1>
-        <input type="password" id="apiKey" placeholder="請貼上正確的 API Key" class="w-full p-4 rounded-lg bg-gray-800 border border-gray-600 mb-4 text-white">
-        <button id="lockBtn" class="w-full py-4 bg-pink-600 rounded-lg font-bold text-lg text-white">鎖定模型並開始</button>
-        <div id="status" class="mt-4 p-3 rounded hidden text-sm"></div>
+        <input type="password" id="apiKey" placeholder="請貼上 API Key" class="w-full p-4 rounded-lg bg-gray-800 border border-gray-600 mb-4 text-white">
+        <button id="listBtn" class="w-full py-4 bg-pink-600 rounded-lg font-bold text-lg text-white">鎖定模型並開始</button>
+        <div id="status" class="mt-4 p-3 rounded hidden break-words text-sm"></div>
     </div>
 
     <!-- 主選單 -->
     <div id="main-view" class="hidden w-full max-w-sm text-center space-y-4">
         <h2 id="status-text" class="text-xl text-pink-300">今天心情如何？</h2>
         <div class="grid grid-cols-2 gap-3">
-            <button onclick="askAI('心情悶')" class="p-4 bg-gray-800 rounded-xl hover:bg-gray-700">心情悶</button>
-            <button onclick="askAI('煩躁忙')" class="p-4 bg-gray-800 rounded-xl hover:bg-gray-700">煩躁忙</button>
-            <button onclick="askAI('健康')" class="p-4 bg-gray-800 rounded-xl hover:bg-gray-700">健康</button>
-            <button onclick="askAI('家庭')" class="p-4 bg-gray-800 rounded-xl hover:bg-gray-700">家庭</button>
-            <button onclick="askAI('親子')" class="p-4 bg-gray-800 rounded-xl hover:bg-gray-700">親子</button>
-            <button onclick="askAI('夫妻相處')" class="p-4 bg-gray-800 rounded-xl hover:bg-gray-700">夫妻相處</button>
-            <button onclick="askAI('朋友')" class="p-4 bg-gray-800 rounded-xl hover:bg-gray-700">朋友</button>
-            <button onclick="askAI('想老公')" class="p-4 bg-gray-800 rounded-xl hover:bg-gray-700">想老公</button>
+            <button onclick="askAI('心情悶')" class="p-4 bg-gray-800 rounded-xl">心情悶</button>
+            <button onclick="askAI('煩躁忙')" class="p-4 bg-gray-800 rounded-xl">煩躁忙</button>
+            <button onclick="askAI('健康')" class="p-4 bg-gray-800 rounded-xl">健康</button>
+            <button onclick="askAI('家庭')" class="p-4 bg-gray-800 rounded-xl">家庭</button>
+            <button onclick="askAI('親子')" class="p-4 bg-gray-800 rounded-xl">親子</button>
+            <button onclick="askAI('夫妻相處')" class="p-4 bg-gray-800 rounded-xl">夫妻相處</button>
+            <button onclick="askAI('朋友')" class="p-4 bg-gray-800 rounded-xl">朋友</button>
+            <button onclick="askAI('想老公')" class="p-4 bg-gray-800 rounded-xl">想老公</button>
         </div>
         <button id="mic-btn" onclick="startVoice()" class="w-full py-6 bg-blue-600 rounded-2xl font-bold text-xl text-white">🎤 按下麥克風(說完畢送出)</button>
-        <button onclick="localStorage.clear(); location.reload();" class="text-gray-500 text-sm">重新設定 API Key</button>
+        <button onclick="resetKey()" class="w-full py-2 bg-gray-800 rounded-xl text-gray-400 underline">重新設定 API Key</button>
     </div>
 
     <!-- 結果頁 -->
     <div id="result-view" class="hidden w-full h-full flex flex-col p-2">
-        <div id="card" class="bg-gray-800 p-6 rounded-3xl border-2 border-pink-500 overflow-y-auto flex-grow mb-4 text-left">
+        <div class="bg-gray-800 p-6 rounded-3xl border-2 border-pink-500 overflow-y-auto flex-grow mb-4 text-left">
             <h3 class="text-pink-300 font-bold mb-2">親愛的玲玲 平安</h3>
             <div id="result-content" class="text-lg leading-relaxed"></div>
         </div>
@@ -60,26 +54,37 @@
         let model;
         const UI = {
             status: document.getElementById('status'),
-            show(msg, css) { this.status.textContent = msg; this.status.className = 'mt-4 p-3 rounded block ' + css; },
-            gotoMain() { document.getElementById('setup-view').classList.add('hidden'); document.getElementById('main-view').classList.remove('hidden'); }
+            showStatus(msg, css) { this.status.textContent = msg; this.status.className = 'mt-4 p-3 rounded block ' + css; },
+            hide() { document.getElementById('setup-view').classList.add('hidden'); document.getElementById('main-view').classList.remove('hidden'); }
         };
 
-        // 鎖定模型初始化
-        document.getElementById('lockBtn').onclick = async () => {
-            const rawKey = document.getElementById('apiKey').value.trim();
-            const cleanKey = rawKey.replace(/[\u0000-\u001F\u007F-\u009F\s]/g, "");
-            if (!cleanKey) return UI.show('請輸入正確的 Key', 'bg-red-900 text-red-200');
-            
+        // 自動載入邏輯
+        const savedKey = localStorage.getItem('gemini_key');
+        if (savedKey) {
+            initializeModel(savedKey, false);
+        }
+
+        async function initializeModel(key, shouldSave) {
             try {
-                UI.show('正在測試 Key 與連線...', 'bg-yellow-900 text-yellow-200');
-                const genAI = new GoogleGenerativeAI(cleanKey);
+                UI.showStatus('正在驗證模型...', 'bg-yellow-900 text-yellow-200');
+                const genAI = new GoogleGenerativeAI(key);
                 model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
-                await model.generateContent("Hi"); // 極簡測試
-                localStorage.setItem('gemini_key', cleanKey);
-                UI.gotoMain();
+                await model.generateContent("Hi"); // 驗證連線
+                if (shouldSave) localStorage.setItem('gemini_key', key);
+                UI.hide();
             } catch (e) {
-                UI.show('認證失敗: ' + e.message, 'bg-red-900 text-red-200');
+                UI.showStatus('驗證失敗: ' + e.message, 'bg-red-900 text-red-200');
+                localStorage.removeItem('gemini_key');
             }
+        }
+
+        document.getElementById('listBtn').onclick = () => initializeModel(document.getElementById('apiKey').value.trim(), true);
+
+        window.resetKey = () => {
+            localStorage.removeItem('gemini_key');
+            document.getElementById('setup-view').classList.remove('hidden');
+            document.getElementById('main-view').classList.add('hidden');
+            document.getElementById('result-view').classList.add('hidden');
         };
 
         window.askAI = async (query) => {
@@ -89,11 +94,10 @@
             contentDiv.innerText = "老公正在為妳求告...";
             
             try {
-                // 嚴格控制字數為約 150 字
-                const result = await model.generateContent(`你是老公，用溫柔親切的語氣安慰玲玲，參考聖經內容，針對「${query}」，寫約150字。開頭：親愛的玲玲 平安。不需自我介紹。`);
+                const result = await model.generateContent(`你是老公，用溫柔語氣安慰並給予金句（合和本），針對「${query}」，約150字。開頭：親愛的玲玲 平安。`);
                 contentDiv.innerText = result.response.text();
             } catch (e) {
-                contentDiv.innerText = "生成失敗 (請檢查 API Key 是否失效): " + e.message;
+                contentDiv.innerText = "生成失敗: " + e.message;
             }
         };
 
@@ -108,9 +112,13 @@
         };
 
         window.toggleSpeak = () => {
+            window.speechSynthesis.cancel();
             const msg = new SpeechSynthesisUtterance(document.getElementById('result-content').innerText);
-            msg.voice = window.speechSynthesis.getVoices().find(v => v.name.includes('男')) || window.speechSynthesis.getVoices()[0];
+            // 強制設定男聲，低沉溫柔
+            const voices = window.speechSynthesis.getVoices();
+            msg.voice = voices.find(v => v.name.includes('男') || v.name.toLowerCase().includes('male')) || voices[0];
             msg.rate = 0.7;
+            msg.pitch = 0.6;
             window.speechSynthesis.speak(msg);
         };
 
@@ -118,13 +126,6 @@
             document.getElementById('result-view').classList.add('hidden');
             document.getElementById('main-view').classList.remove('hidden');
         };
-
-        // 自動載入
-        const savedKey = localStorage.getItem('gemini_key');
-        if (savedKey) {
-            document.getElementById('apiKey').value = savedKey;
-            document.getElementById('lockBtn').click();
-        }
     </script>
 </body>
 </html>
