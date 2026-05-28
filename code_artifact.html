@@ -296,10 +296,9 @@
       setTimeout(() => {
         toast.classList.remove('opacity-100');
         toast.classList.add('opacity-0', 'pointer-events-none');
-      }, 3500);
+      }, 4500); // 增加時間讓長文引導更易閱讀
     }
 
-    // Key Modal 管理
     function showKeyModal() {
       document.getElementById('apiKeyInput').value = geminiApiKey;
       document.getElementById('keyModal').classList.remove('hidden');
@@ -387,7 +386,6 @@
       document.getElementById('musicStatus').innerText = "愛的真諦:關";
     }
 
-    // 初始化語音辨識
     function initSpeechRecognition() {
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
       if (!SpeechRecognition) {
@@ -410,14 +408,34 @@
       recognition.onerror = function(e) {
         console.error("語音輸入錯誤:", e.error);
         stopSpeechUI();
+        
+        // 偵測是否為 iPhone / iOS 系統裝置
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+        // 偵測是否在 iframe / 預覽沙盒中執行
+        const inIframe = window.self !== window.top;
+
         if (e.error === 'not-allowed') {
-          showToast("麥克風權限被拒絕，請在手機系統設定中開放麥克風權限");
+          if (isIOS) {
+            showToast("🍎 iPhone 麥克風權限被阻擋。請至「設定」>「Safari」>「麥克風」將其設定為「允許」。");
+          } else {
+            showToast("麥克風權限被拒絕，請在瀏覽器設定中開放麥克風存取權限。");
+          }
+        } else if (e.error === 'network') {
+          if (isIOS) {
+            if (inIframe) {
+              showToast("🍎 執行診斷提示：iPhone Safari 不支援在『預覽視窗(Iframe)』中語音辨識。請點擊右上角開啟新分頁，或直接使用鍵盤手動輸入喔！");
+            } else {
+              showToast("🍎 iPhone 聽寫連線失敗。請確認：1. 設定 > 一般 > 鍵盤 >「啟用聽寫」已打開。2. 請務必使用原生 Safari 瀏覽器打開網頁（避免使用 LINE 內建視窗）。");
+            }
+          } else {
+            showToast("語音辨識網路連線異常，請確認網路穩定後重試。");
+          }
         } else if (e.error === 'no-speech') {
           showToast("沒有聽到聲音，請靠近麥克風再試一次");
         } else if (e.error === 'audio-capture') {
-          showToast("手機音訊裝置被佔用，請關閉其他音樂播放程式後再試");
+          showToast("手機音訊裝置被佔用，請關閉其他通話或音樂軟體後重試。");
         } else {
-          showToast("語音辨識出錯，請用手動輸入或檢查連線環境喔");
+          showToast("語音辨識未就緒，推薦直接鍵盤輸入更快速喔！");
         }
       };
 
@@ -433,16 +451,16 @@
       };
     }
 
-    // 啟動語音辨識（核心優化：整合 HTTPS 安全診斷與背景音樂靜音防佔用）
+    // 啟動語音辨識（整合 HTTPS 安全診斷與音訊釋放）
     function toggleSpeech() {
       if (!recognition) {
         showToast("此手機裝置的瀏覽器未開放或不支援麥克風語音輸入");
         return;
       }
 
-      // 手機端安全通訊協定 (HTTPS) 限制預警診斷
+      // 檢查 HTTPS 協定
       if (window.location.protocol !== 'https:' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
-        showToast("⚠️ 手機規範提示：必須在 HTTPS 安全加密網址下，才能啟用麥克風喔！");
+        showToast("⚠️ 安全提示：手機系統限制必須在 HTTPS 安全網址下才能啟用錄音辨識！");
       }
       
       if (audioCtx && audioCtx.state === 'suspended') {
@@ -452,7 +470,7 @@
       if (isListening) {
         recognition.stop();
       } else {
-        // 【關鍵優化】錄音前強制停止所有背景旋律與大聲朗讀，防止手機系統通道被佔用導致失敗！
+        // iPhone 硬體防衝突優化：強制暫停背景配樂與朗讀，騰出音訊通道
         stopBackgroundMusic();
         window.speechSynthesis.cancel();
 
@@ -460,12 +478,11 @@
           recognition.start();
         } catch (e) {
           console.error("啟動辨識失敗", e);
-          // 如果實例意外毀損，自動重新初始化
-          initSpeechRecognition();
+          initSpeechRecognition(); // 崩潰時重新實例化
           try {
             recognition.start();
           } catch(err) {
-            showToast("麥克風啟動失敗，建議重新載入或使用鍵盤手動輸入");
+            showToast("錄音啟動失敗，請重新載入或使用手動輸入。");
           }
         }
       }
@@ -478,7 +495,6 @@
     }
 
 
-    // 具有秒級超時（Timeout）控制與超快速重試的請求函數 (極致提升反應速度)
     async function fetchWithTimeoutAndRetry(url, options, retries = 1, delay = 500, timeoutMs = 4000) {
       const controller = new AbortController();
       const id = setTimeout(() => controller.abort(), timeoutMs);
@@ -510,7 +526,6 @@
       }
     }
 
-    // 核心請求：實作智慧多模型秒級切換輪替鏈
     async function executeGeminiQuery(userQuery) {
       setInterfaceLocked(true);
 
@@ -529,7 +544,7 @@
         
         let loadingMsg = "老公正在查經，尋求亮光中...";
         if (i > 0) {
-          loadingMsg = "老公正在調用備用智慧經卷，再等我一下下喔...";
+          loadingMsg = "老公正在調用備用智慧經卷，再等我一下喔...";
         }
         document.getElementById('loadingText').innerText = loadingMsg;
 
@@ -543,7 +558,7 @@
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
-          }, 0, 500, 4000); // 0 次重試，4秒超時
+          }, 0, 500, 4000); // 4秒連線硬性超時
 
           const result = await response.json();
           const responseText = result.candidates?.[0]?.content?.parts?.[0]?.text;
@@ -556,7 +571,7 @@
             throw new Error("Format error");
           }
         } catch (err) {
-          console.warn(`[快速調度] 模型 ${model} 失敗，自動秒級切換。`, err);
+          console.warn(`[快速切換] 模型 ${model} 連線障礙，自動秒級切換。`, err);
           lastError = err;
           continue;
         }
@@ -569,7 +584,6 @@
       setInterfaceLocked(false);
     }
 
-    // 處理最終的錯誤診斷呈現
     function handleFinalError(err) {
       if (err instanceof Response) {
         const statusCode = err.status;
@@ -611,7 +625,12 @@
       const paragraphs = text.split('\n').filter(p => p.trim() !== '');
 
       let htmlContent = `<div class="space-y-4">`;
-      htmlContent += `<div class="text-xs tracking-widest text-amber-500/80 font-bold uppercase">Dearest Wife • 專屬安慰</div>`;
+      // 客製化專屬太座 玲玲 的精美發光抬頭
+      htmlContent += `
+        <div class="text-base md:text-lg tracking-widest text-amber-300 font-extrabold mb-1 drop-shadow-[0_0_8px_rgba(212,163,56,0.5)]">
+          💖 親愛的玲玲 平安 💖
+        </div>
+      `;
 
       paragraphs.forEach((p, idx) => {
         if (p.includes('(') || p.includes('（') || p.includes('：') || p.includes(':') || idx === paragraphs.length - 1) {
@@ -657,7 +676,6 @@
       switchScreen('result');
     }
 
-    // 雙頁面切換控制
     function switchScreen(screen) {
       const searchScreen = document.getElementById('searchScreen');
       const resultScreen = document.getElementById('resultScreen');
@@ -708,7 +726,7 @@
         case '親子': promptText = "親愛的老公，看著大孩子的生活，求當個有智慧放手又關懷的媽媽。"; break;
         case '夫妻相處': promptText = "親愛的老公，求主看顧我們夫妻的心，給我們源源不絕親密與扶持的力量。"; break;
         case '朋友': promptText = "親愛的老公，求賜予人際關係的智慧，與朋友相處有恩慈、能互相信任。"; break;
-        case '想老公': promptText = "親愛的老公，我今天特別想念你，求你對我說幾句溫暖深情的話。"; break;
+        case '想老公': promptText = "親愛的老公，我今天特別想念你，求你對我說幾句溫慢深情的話。"; break;
         default: promptText = `我想查考關於：${theme}`;
       }
       document.getElementById('userInput').value = promptText;
@@ -735,8 +753,9 @@
       window.speechSynthesis.cancel();
 
       const cardContentText = document.getElementById('cardContent').innerText;
+      // 智慧過濾專屬抬頭的愛心裝飾符號，保持自然沉穩的老公口吻朗讀
       const textToSpeak = cardContentText
-        .replace("Dearest Wife • 專屬安慰", "")
+        .replace("💖 親愛的玲玲 平安 💖", "親愛的玲玲平安。")
         .replace(/「/g, "")
         .replace(/」/g, "")
         .trim();
