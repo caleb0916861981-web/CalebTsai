@@ -99,7 +99,7 @@
         ];
         
         let sessionKey = "";
-        let isProcessing = false; // 新增：是否正在處理請求的狀態標記
+        let isProcessing = false;
 
         // ==========================================
         // 1. 解密與解鎖邏輯
@@ -111,7 +111,6 @@
             if (pin.length !== 4) return;
 
             try {
-                // 利用使用者輸入的密碼作為解算因子
                 const factor = parseInt(pin, 10);
                 if (factor === 0) throw new Error("Invalid");
 
@@ -120,15 +119,12 @@
                     decrypted += String.fromCharCode(SECURE_DATA_BUFFER[i] / factor);
                 }
 
-                // 驗證機制：解密出來的字串必須以 AIza 開頭
                 if (decrypted.startsWith("AIza")) {
                     sessionKey = decrypted;
                     errorMsg.classList.add('hidden');
                     
-                    // 切換畫面
                     document.getElementById('loginScreen').classList.add('hidden');
                     document.getElementById('mainApp').classList.remove('hidden');
-                    // 解鎖後聚焦到文字輸入框
                     setTimeout(() => document.getElementById('textInput').focus(), 500);
                 } else {
                     errorMsg.classList.remove('hidden');
@@ -177,30 +173,26 @@
                 updateMicUI(false);
             };
         } else {
-            console.warn("瀏覽器不支援語音辨識 API，僅能使用文字輸入。");
             document.getElementById('micBtn').style.display = 'none';
             document.getElementById('micStatusText').innerText = "您的瀏覽器不支援語音輸入";
             document.getElementById('micStatusText').classList.remove('hidden');
         }
 
-        // 新增：設定 UI 鎖定狀態的函式
         function setProcessingState(state) {
             isProcessing = state;
             document.getElementById('textInput').disabled = state;
             document.getElementById('sendBtn').disabled = state;
             document.getElementById('micBtn').disabled = state;
             
-            // 如果解鎖，將焦點放回輸入框
             if (!state) {
                 setTimeout(() => document.getElementById('textInput').focus(), 100);
             }
         }
 
         function toggleMic() {
-            if (isProcessing) return; // 如果正在處理請求，則忽略點擊
+            if (isProcessing) return;
             if (!recognition) return;
             
-            // 如果正在說話 (TTS)，則停止說話
             window.speechSynthesis.cancel();
 
             if (isRecording) {
@@ -212,13 +204,12 @@
         }
 
         function sendTextMessage() {
-            if (isProcessing) return; // 如果正在處理請求，則忽略點擊或 Enter
+            if (isProcessing) return;
 
             const input = document.getElementById('textInput');
             const text = input.value.trim();
             if (text === "") return;
 
-            // 停止 TTS 與語音辨識
             window.speechSynthesis.cancel();
             if (isRecording && recognition) recognition.stop();
 
@@ -226,7 +217,7 @@
             processAIResponse(text);
             
             input.value = '';
-            input.style.height = ''; // 重置 textarea 高度
+            input.style.height = ''; 
             input.focus();
         }
 
@@ -259,8 +250,11 @@
             bubble.className = `max-w-[85%] rounded-2xl px-5 py-3 text-sm md:text-base ${
                 role === 'user' 
                 ? 'bg-blue-600 text-white rounded-br-none shadow-md' 
-                : 'bg-gray-100 text-gray-800 rounded-bl-none shadow'
+                : 'bg-red-50 text-gray-800 rounded-bl-none shadow border border-red-100' // 如果是系統錯誤，背景稍作調整
             }`;
+            
+            if (role === 'ai') bubble.className = bubble.className.replace('bg-red-50', 'bg-gray-100').replace('border-red-100', 'border-transparent');
+
             bubble.innerText = text;
             
             wrapper.appendChild(bubble);
@@ -269,42 +263,50 @@
         }
 
         // ==========================================
-        // 3. Gemini API 呼叫與語音合成 (TTS) + 自動重試機制
+        // 3. Gemini API 呼叫與語音合成 (TTS) + 強化偵錯版
         // ==========================================
         
-        // 帶有指數退避 (Exponential Backoff) 的連線重試機制
         async function fetchWithRetry(url, options) {
-            const delays = [1000, 2000, 4000, 8000, 16000]; // 失敗時的等待時間(毫秒)
+            const delays = [1000, 2000, 4000, 8000, 16000];
             
             for (let i = 0; i <= delays.length; i++) {
                 try {
                     const response = await fetch(url, options);
                     
                     if (!response.ok) {
-                        // 如果是 429 (請求過於頻繁) 或 5xx (伺服器錯誤)，則拋出例外以觸發重試
+                        let errorDetails = '';
+                        try {
+                            // 嘗試解析 Google 傳回的詳細錯誤訊息
+                            const errorData = await response.json();
+                            errorDetails = errorData.error ? errorData.error.message : '';
+                        } catch(e) {}
+                        
                         if (response.status === 429 || response.status >= 500) {
-                            throw new Error(`伺服器忙碌中 (狀態碼: ${response.status})`);
+                            throw new Error(`伺服器忙碌中 (狀態碼: ${response.status}) - ${errorDetails}`);
                         }
-                        // 若是其他錯誤 (如 400, 403 金鑰失效)，則不重試，直接報錯
-                        throw new Error(`連線錯誤 (狀態碼: ${response.status})`);
+                        // 若是 400 或 403 錯誤，直接拋出不重試
+                        throw new Error(`連線被拒絕 (狀態碼: ${response.status}) - ${errorDetails || '權限設定或參數錯誤'}`);
                     }
-                    return response; // 成功取得回覆
+                    return response; // 成功
                 } catch (error) {
-                    if (i === delays.length || !error.message.includes('忙碌中')) {
-                        throw error; // 如果已經重試 5 次，或不是可以重試的錯誤，就宣告失敗
+                    // 如果是因為 CORS 或網域被阻擋，fetch 會直接拋出 TypeError
+                    if (error.name === 'TypeError' && error.message === 'Failed to fetch') {
+                        throw new Error('網路請求被瀏覽器攔截！可能是您的 API 金鑰設定了「網域限制」但沒有將 GitHub Pages 加入白名單，或是被瀏覽器的擋廣告套件攔截。');
                     }
-                    // 畫面提示使用者系統正在努力中
-                    updateStatus(`伺服器忙碌，${delays[i]/1000}秒後自動重試...`, 'bg-yellow-100 text-yellow-700');
-                    await new Promise(resolve => setTimeout(resolve, delays[i])); // 等待指定時間
+                    
+                    if (i === delays.length || !error.message.includes('忙碌中')) {
+                        throw error; 
+                    }
+                    updateStatus(`伺服器忙碌，${delays[i]/1000}秒後重試...`, 'bg-yellow-100 text-yellow-700');
+                    await new Promise(resolve => setTimeout(resolve, delays[i]));
                 }
             }
         }
 
         async function processAIResponse(userText) {
-            setProcessingState(true); // 鎖定輸入介面
+            setProcessingState(true);
             updateStatus('思考中...', 'bg-yellow-100 text-yellow-700');
             
-            // 嚴格依照要求的 AI 角色設定檔
             const systemInstruction = "你是中華神學院的資深老師。不需要告知是神學院老師身分，不需自我介紹，直接給結果，不要前言，只回報結果，不描述過程。對話對象為高中女性，10年基督徒，孩子大學生，不需要呈現身分。";
             
             const payload = {
@@ -327,15 +329,21 @@
                 
                 appendMessage('ai', aiReply);
                 updateStatus('回覆完成', 'bg-green-100 text-green-700');
-                
                 speakOut(aiReply);
 
             } catch (error) {
-                console.error(error);
-                updateStatus('發生錯誤', 'bg-red-100 text-red-700');
-                appendMessage('ai', '抱歉，目前伺服器太過忙碌，請稍等幾秒鐘後再試一次。');
+                console.error("詳細錯誤紀錄：", error);
+                updateStatus('連線失敗', 'bg-red-100 text-red-700');
+                
+                // 將詳細的技術錯誤轉化為白話文顯示給使用者
+                let friendlyMsg = error.message;
+                if (error.message.includes('忙碌中') || error.message.includes('429')) {
+                    friendlyMsg = '目前伺服器太過忙碌，已觸發 Google 免費版「每分鐘最多 15 次」的保護限制。請等待 1 分鐘後再次送出即可。';
+                }
+                
+                appendMessage('system', `⚠️ 系統提示：${friendlyMsg}`);
             } finally {
-                setProcessingState(false); // 無論成功或失敗，都解鎖輸入介面
+                setProcessingState(false);
             }
         }
 
