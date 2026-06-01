@@ -8,44 +8,44 @@
     <script type="importmap">
         { "imports": { "@google/generative-ai": "https://esm.run/@google/generative-ai" } }
     </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;700&display=swap');
+        .card-font { font-family: 'Noto Serif TC', serif; }
+        .bg-paper { background-color: #fdfbf7; }
+    </style>
 </head>
-<body class="h-full flex flex-col items-center justify-center p-4 bg-gray-900 text-white overflow-hidden">
+<body class="h-full flex flex-col items-center justify-center p-4 bg-slate-900 text-white overflow-hidden">
 
-    <!-- 設定頁 -->
     <div id="setup-view" class="w-full max-w-sm text-center">
         <h1 class="text-2xl font-bold mb-6 text-pink-400">親愛的玲玲，平安</h1>
-        <input type="password" id="apiKey" placeholder="請貼上 API Key" class="w-full p-4 rounded-lg bg-gray-800 border border-gray-600 mb-4 text-white">
-        <button id="listBtn" class="w-full py-4 bg-pink-600 rounded-lg font-bold text-lg text-white">鎖定模型並開始</button>
-        <div id="status" class="mt-4 p-3 rounded hidden break-words text-sm"></div>
+        <input type="password" id="apiKey" placeholder="請貼上 Gemini API Key" class="w-full p-4 rounded-xl bg-gray-800 border border-gray-600 mb-4 text-white">
+        <button id="listBtn" class="w-full py-4 bg-pink-600 hover:bg-pink-500 rounded-xl font-bold text-lg transition-all">鎖定模型並開始</button>
     </div>
 
-    <!-- 主選單 -->
     <div id="main-view" class="hidden w-full max-w-sm text-center space-y-4">
-        <h2 id="status-text" class="text-xl text-pink-300">今天心情如何？</h2>
-        <div id="voice-transcript" class="p-3 bg-gray-800 rounded-lg italic text-gray-400 min-h-[3rem] border border-gray-700 text-sm">準備聆聽...</div>
+        <h2 id="status-text" class="text-xl text-pink-300 font-bold mb-4">今天心裡想對主說什麼？</h2>
+        <div id="voice-transcript" class="p-3 bg-gray-800 rounded-lg italic text-gray-400 min-h-[3rem] border border-gray-700 text-sm flex items-center justify-center">準備聆聽...</div>
         <div class="grid grid-cols-2 gap-3">
-            <button onclick="askAI('心情悶')" class="p-4 bg-gray-800 rounded-xl hover:bg-gray-700">心情悶</button>
-            <button onclick="askAI('煩躁忙')" class="p-4 bg-gray-800 rounded-xl hover:bg-gray-700">煩躁忙</button>
-            <button onclick="askAI('健康')" class="p-4 bg-gray-800 rounded-xl hover:bg-gray-700">健康</button>
-            <button onclick="askAI('家庭')" class="p-4 bg-gray-800 rounded-xl hover:bg-gray-700">家庭</button>
-            <button onclick="askAI('親子')" class="p-4 bg-gray-800 rounded-xl hover:bg-gray-700">親子</button>
-            <button onclick="askAI('夫妻相處')" class="p-4 bg-gray-800 rounded-xl hover:bg-gray-700">夫妻相處</button>
-            <button onclick="askAI('朋友')" class="p-4 bg-gray-800 rounded-xl hover:bg-gray-700">朋友</button>
-            <button onclick="askAI('想老公')" class="p-4 bg-gray-800 rounded-xl hover:bg-gray-700">想老公</button>
+            <button onclick="askAI('心情悶')" class="p-3 bg-gray-800 rounded-xl hover:bg-pink-900 transition-colors border border-gray-700">心情悶</button>
+            <button onclick="askAI('煩躁忙')" class="p-3 bg-gray-800 rounded-xl hover:bg-pink-900 transition-colors border border-gray-700">煩躁忙</button>
+            <button onclick="askAI('身體健康')" class="p-3 bg-gray-800 rounded-xl hover:bg-pink-900 transition-colors border border-gray-700">身體健康</button>
+            <button onclick="askAI('家庭瑣事')" class="p-3 bg-gray-800 rounded-xl hover:bg-pink-900 transition-colors border border-gray-700">家庭</button>
+            <button onclick="askAI('親子關係')" class="p-3 bg-gray-800 rounded-xl hover:bg-pink-900 transition-colors border border-gray-700">親子</button>
+            <button onclick="askAI('夫妻相處')" class="p-3 bg-gray-800 rounded-xl hover:bg-pink-900 transition-colors border border-gray-700">夫妻相處</button>
+            <button onclick="askAI('朋友人際')" class="p-3 bg-gray-800 rounded-xl hover:bg-pink-900 transition-colors border border-gray-700">朋友</button>
+            <button onclick="askAI('想老公了')" class="p-3 bg-gray-800 rounded-xl hover:bg-pink-900 transition-colors border border-gray-700">想老公</button>
         </div>
-        <button id="mic-btn" onclick="startVoice()" class="w-full py-6 bg-blue-600 rounded-2xl font-bold text-xl text-white">🎤 按下麥克風(說完畢送出)</button>
+        <button id="mic-btn" onclick="startVoice()" class="w-full py-5 bg-blue-600 rounded-2xl font-bold text-lg shadow-lg active:scale-95 transition-transform">🎤 按下麥克風(說完畢送出)</button>
         <button onclick="resetKey()" class="w-full py-2 text-gray-500 underline text-sm">重新設定 API Key</button>
     </div>
 
-    <!-- 結果頁 -->
-    <div id="result-view" class="hidden w-full h-full flex flex-col p-2">
-        <div class="bg-gray-800 p-6 rounded-3xl border-2 border-pink-500 overflow-y-auto flex-grow mb-4 text-left">
-            <h3 class="text-pink-300 font-bold mb-2">親愛的玲玲 平安</h3>
-            <div id="result-content" class="text-lg leading-relaxed"></div>
+    <div id="result-view" class="hidden w-full h-full flex flex-col p-2 max-w-md">
+        <div class="bg-paper p-8 rounded-2xl shadow-2xl overflow-y-auto flex-grow mb-4 text-slate-800 card-font border border-gray-200">
+            <div id="result-content" class="text-lg leading-relaxed whitespace-pre-wrap"></div>
         </div>
-        <div class="space-y-3">
-            <button id="speak-toggle" onclick="toggleSpeak()" class="w-full py-5 bg-green-600 rounded-2xl font-bold text-xl text-white">🔊 播放朗讀</button>
-            <button onclick="showMain()" class="w-full py-5 bg-gray-700 rounded-2xl font-bold text-xl text-white">❤️ 返回</button>
+        <div class="grid grid-cols-2 gap-3">
+            <button id="speak-toggle" onclick="toggleSpeak()" class="py-4 bg-green-700 rounded-xl font-bold text-white shadow-lg">🔊 播放朗讀</button>
+            <button onclick="showMain()" class="py-4 bg-gray-700 rounded-xl font-bold text-white shadow-lg">❤️ 返回</button>
         </div>
     </div>
 
@@ -53,9 +53,8 @@
         import { GoogleGenerativeAI } from "@google/generative-ai";
         
         let model;
-        const TARGET_MODEL = "gemini-2.5-flash";
+        const TARGET_MODEL = "gemini-2.0-flash"; 
 
-        // 清洗 API Key，確保無非法字元
         function sanitizeKey(key) { return key.replace(/[^\x00-\x7F]/g, "").trim(); }
 
         document.getElementById('listBtn').onclick = async () => {
@@ -72,13 +71,20 @@
             } catch (e) { alert("Key 初始化失敗: " + e.message); }
         };
 
-        // 指數退避重試邏輯 (Tenacity)
         async function fetchWithRetry(query, attempt = 0) {
             try {
-                const prompt = `你是老公，用溫柔語氣安慰並給予金句（合和本），針對「${query}」，約150字。開頭：親愛的玲玲 平安。直接給結果，不要前言。`;
+                const prompt = `你是玲玲深愛的丈夫，也是一位在聖經真理上有深刻體驗的基督徒伴侶。請針對玲玲目前的狀況「${query}」，寫一封充滿愛與屬靈眼光的安慰信。
+規則：
+1. 語氣：如丈夫般溫暖、成熟、充滿愛意。
+2. 開頭：固定使用「親愛的玲玲 平安」為開場。
+3. 內容：必須引述一句適合此情境的《聖經和合本》金句，並略述該金句對這件事的屬靈洞見。
+4. 結構：字數約 120-180 字，排版優美，段落分明。
+5. 禁止事項：不需要自我介紹，直接以丈夫的身分對她心靈說話，不要寫「好的」或任何前言。
+6. 重點句子可適度加粗，確保閱讀體驗像一封精美的電子賀卡。`;
+                
                 return await model.generateContent(prompt);
             } catch (err) {
-                if (attempt < 4) {
+                if (attempt < 3) {
                     await new Promise(r => setTimeout(r, Math.pow(2, attempt) * 1000));
                     return fetchWithRetry(query, attempt + 1);
                 }
@@ -87,8 +93,7 @@
         }
 
         window.askAI = async (query) => {
-            // 快取機制 (Caching)
-            const cacheKey = `cache_${query}`;
+            const cacheKey = `cache_${query.substring(0, 10)}`;
             const cached = localStorage.getItem(cacheKey);
             
             document.getElementById('main-view').classList.add('hidden');
@@ -96,35 +101,44 @@
             const contentDiv = document.getElementById('result-content');
 
             if (cached) {
-                contentDiv.innerText = cached;
+                contentDiv.innerHTML = cached;
                 return;
             }
 
-            contentDiv.innerText = "老公正在為妳求告...";
+            contentDiv.innerText = "親愛的老公正在為妳向主求告中...";
             try {
                 const result = await fetchWithRetry(query);
                 const text = result.response.text();
-                localStorage.setItem(cacheKey, text);
-                contentDiv.innerText = text;
-            } catch (e) { contentDiv.innerText = "連線失敗: " + e.message; }
+                // 確保 AI 回覆結構精美
+                const formatted = text.replace(/\n/g, '<br><br>');
+                localStorage.setItem(cacheKey, formatted);
+                contentDiv.innerHTML = formatted;
+            } catch (e) { contentDiv.innerText = "連線失敗，請確認 API Key 是否有效: " + e.message; }
         };
 
         window.startVoice = () => {
-            const rec = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!SpeechRecognition) { alert("瀏覽器不支援語音辨識功能。"); return; }
+            const rec = new SpeechRecognition();
             rec.lang = 'zh-TW';
             rec.interimResults = true;
+            document.getElementById('mic-btn').innerText = "聆聽中...";
             rec.onresult = (e) => {
                 const text = Array.from(e.results).map(r => r[0].transcript).join('');
                 document.getElementById('voice-transcript').innerText = text;
-                if(text.includes('完畢')) window.askAI(text.replace('完畢', ''));
+                if(text.includes('完畢') || text.includes('結束')) window.askAI(text.replace('完畢', '').replace('結束', ''));
             };
+            rec.onend = () => document.getElementById('mic-btn').innerText = "🎤 按下麥克風(說完畢送出)";
             rec.start();
         };
 
         window.toggleSpeak = () => {
-            const msg = new SpeechSynthesisUtterance(document.getElementById('result-content').innerText);
-            msg.voice = window.speechSynthesis.getVoices().find(v => v.name.includes('男')) || window.speechSynthesis.getVoices()[0];
-            msg.rate = 0.7;
+            window.speechSynthesis.cancel();
+            const content = document.getElementById('result-content').innerText;
+            const msg = new SpeechSynthesisUtterance(content);
+            const voices = window.speechSynthesis.getVoices();
+            msg.voice = voices.find(v => v.name.includes('Google 國語') || v.name.includes('Microsoft')) || voices[0];
+            msg.rate = 0.85;
             window.speechSynthesis.speak(msg);
         };
 
