@@ -73,14 +73,10 @@
 
         async function fetchWithRetry(query, attempt = 0) {
             try {
-                const prompt = `你是玲玲深愛的丈夫，也是一位在聖經真理上有深刻體驗的基督徒伴侶。請針對玲玲目前的狀況「${query}」，寫一封充滿愛與屬靈眼光的安慰信。
-規則：
-1. 語氣：如丈夫般溫暖、成熟、充滿愛意。
-2. 開頭：固定使用「親愛的玲玲 平安」為開場。
-3. 內容：必須引述一句適合此情境的《聖經和合本》金句，並略述該金句對這件事的屬靈洞見。
-4. 結構：字數約 120-180 字，排版優美，段落分明。
-5. 禁止事項：不需要自我介紹，直接以丈夫的身分對她心靈說話，不要寫「好的」或任何前言。
-6. 重點句子可適度加粗，確保閱讀體驗像一封精美的電子賀卡。`;
+                // 簡化提示詞以減少 Token 使用
+                const prompt = `你是玲玲的丈夫。針對「${query}」，請用溫暖口吻安慰她，並附上一句合和本聖經經文。
+開頭：親愛的玲玲 平安。
+字數約 100 字，精簡溫馨。`;
                 
                 return await model.generateContent(prompt);
             } catch (err) {
@@ -105,30 +101,28 @@
                 return;
             }
 
-            contentDiv.innerText = "親愛的老公正在為妳向主求告中...";
+            contentDiv.innerText = "老公正在為妳求告中...";
             try {
                 const result = await fetchWithRetry(query);
                 const text = result.response.text();
-                // 確保 AI 回覆結構精美
                 const formatted = text.replace(/\n/g, '<br><br>');
                 localStorage.setItem(cacheKey, formatted);
                 contentDiv.innerHTML = formatted;
-            } catch (e) { contentDiv.innerText = "連線失敗，請確認 API Key 是否有效: " + e.message; }
+            } catch (e) { contentDiv.innerText = "連線失敗，請確認 API Key 或稍後再試。"; }
         };
 
         window.startVoice = () => {
             const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-            if (!SpeechRecognition) { alert("瀏覽器不支援語音辨識功能。"); return; }
+            if (!SpeechRecognition) { alert("瀏覽器不支援語音功能。"); return; }
             const rec = new SpeechRecognition();
             rec.lang = 'zh-TW';
-            rec.interimResults = true;
             document.getElementById('mic-btn').innerText = "聆聽中...";
             rec.onresult = (e) => {
-                const text = Array.from(e.results).map(r => r[0].transcript).join('');
+                const text = e.results[0][0].transcript;
                 document.getElementById('voice-transcript').innerText = text;
-                if(text.includes('完畢') || text.includes('結束')) window.askAI(text.replace('完畢', '').replace('結束', ''));
+                window.askAI(text);
             };
-            rec.onend = () => document.getElementById('mic-btn').innerText = "🎤 按下麥克風(說完畢送出)";
+            rec.onend = () => document.getElementById('mic-btn').innerText = "🎤 按下麥克風(說完送出)";
             rec.start();
         };
 
@@ -136,8 +130,6 @@
             window.speechSynthesis.cancel();
             const content = document.getElementById('result-content').innerText;
             const msg = new SpeechSynthesisUtterance(content);
-            const voices = window.speechSynthesis.getVoices();
-            msg.voice = voices.find(v => v.name.includes('Google 國語') || v.name.includes('Microsoft')) || voices[0];
             msg.rate = 0.85;
             window.speechSynthesis.speak(msg);
         };
