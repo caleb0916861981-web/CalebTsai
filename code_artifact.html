@@ -1,155 +1,811 @@
 <!DOCTYPE html>
-<html lang="zh-Hant-TW" class="h-full">
+<html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>太座喜樂查經</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>太座喜樂 平安查經</title>
+    <!-- Tailwind CSS for modern utility styling -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <script type="importmap">
-        { "imports": { "@google/generative-ai": "https://esm.run/@google/generative-ai" } }
-    </script>
+    <!-- FontAwesome for elegant spiritual icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Beautiful Google Font for Greeting Card -->
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@600;900&family=Zhi+Mang+Xing&display=swap" rel="stylesheet">
+    
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;700&display=swap');
-        .card-font { font-family: 'Noto Serif TC', serif; }
-        .bg-paper { background-color: #fdfbf7; }
+        /* Force no-scroll single-page setup */
+        html, body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #0d0d0c;
+            color: #f3f4f6;
+            -webkit-font-smoothing: antialiased;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+
+        /* Gold metallic glow text */
+        .gold-glow {
+            text-shadow: 0 0 10px rgba(212, 175, 55, 0.4), 0 0 20px rgba(212, 175, 55, 0.2);
+            background: linear-gradient(to bottom, #ffe082 0%, #d4af37 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        /* Golden border styling for the beautiful card */
+        .gold-card {
+            border: 4px double #d4af37;
+            box-shadow: 0 0 25px rgba(212, 175, 55, 0.15), inset 0 0 20px rgba(212, 175, 55, 0.1);
+            background: radial-gradient(circle at center, #1c1914 0%, #0d0d0c 100%);
+        }
+
+        /* Pulsing recording animation for microphone */
+        @keyframes pulse-red {
+            0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+            50% { transform: scale(1.08); box-shadow: 0 0 0 15px rgba(239, 68, 68, 0); }
+        }
+        .mic-active {
+            animation: pulse-red 1.6s infinite ease-in-out;
+            background-color: #ef4444 !important;
+        }
+
+        /* Floating hearts animation background */
+        @keyframes float-heart {
+            0% { transform: translateY(100vh) scale(0); opacity: 0; }
+            50% { opacity: 0.8; }
+            100% { transform: translateY(-10vh) scale(1.2); opacity: 0; }
+        }
+        .heart-particle {
+            position: absolute;
+            bottom: 0;
+            color: #ef4444;
+            pointer-events: none;
+            animation: float-heart 4s linear infinite;
+        }
+
+        /* Styling for the elegant serif typography in the card */
+        .card-scripture {
+            font-family: 'Noto Serif TC', 'Georgia', serif;
+            line-height: 1.8;
+        }
     </style>
 </head>
-<body class="h-full flex flex-col items-center justify-center p-4 bg-slate-900 text-white overflow-hidden">
+<body class="flex flex-col h-full w-full">
 
-    <div id="setup-view" class="w-full max-w-sm text-center">
-        <h1 class="text-2xl font-bold mb-6 text-pink-400">親愛的玲玲，平安</h1>
-        <input type="password" id="apiKey" placeholder="請貼上 Gemini API Key" class="w-full p-4 rounded-xl bg-gray-800 border border-gray-600 mb-4 text-white">
-        <button id="listBtn" class="w-full py-4 bg-pink-600 hover:bg-pink-500 rounded-xl font-bold text-lg transition-all">鎖定模型並開始</button>
-    </div>
+    <!-- Background Particle Container -->
+    <div id="particle-container" class="absolute inset-0 overflow-hidden pointer-events-none z-0"></div>
 
-    <div id="main-view" class="hidden w-full max-w-sm text-center space-y-4">
-        <h2 id="status-text" class="text-xl text-pink-300 font-bold mb-4">今天心裡想對主說什麼？</h2>
-        <div id="voice-transcript" class="p-3 bg-gray-800 rounded-lg italic text-gray-400 min-h-[3rem] border border-gray-700 text-sm flex items-center justify-center">準備聆聽...</div>
-        <div class="grid grid-cols-2 gap-3">
-            <button onclick="askAI('心情悶')" class="p-3 bg-gray-800 rounded-xl hover:bg-pink-900 transition-colors border border-gray-700">心情悶</button>
-            <button onclick="askAI('煩躁忙')" class="p-3 bg-gray-800 rounded-xl hover:bg-pink-900 transition-colors border border-gray-700">煩躁忙</button>
-            <button onclick="askAI('身體健康')" class="p-3 bg-gray-800 rounded-xl hover:bg-pink-900 transition-colors border border-gray-700">身體健康</button>
-            <button onclick="askAI('家庭瑣事')" class="p-3 bg-gray-800 rounded-xl hover:bg-pink-900 transition-colors border border-gray-700">家庭</button>
-            <button onclick="askAI('親子關係')" class="p-3 bg-gray-800 rounded-xl hover:bg-pink-900 transition-colors border border-gray-700">親子</button>
-            <button onclick="askAI('夫妻相處')" class="p-3 bg-gray-800 rounded-xl hover:bg-pink-900 transition-colors border border-gray-700">夫妻相處</button>
-            <button onclick="askAI('朋友人際')" class="p-3 bg-gray-800 rounded-xl hover:bg-pink-900 transition-colors border border-gray-700">朋友</button>
-            <button onclick="askAI('想老公了')" class="p-3 bg-gray-800 rounded-xl hover:bg-pink-900 transition-colors border border-gray-700">想老公</button>
-        </div>
-        <button id="mic-btn" onclick="startVoice()" class="w-full py-5 bg-blue-600 rounded-2xl font-bold text-lg shadow-lg active:scale-95 transition-transform">🎤 按下麥克風(說完畢送出)</button>
-        <button onclick="resetKey()" class="w-full py-2 text-gray-500 underline text-sm">重新設定 API Key</button>
-    </div>
-
-    <div id="result-view" class="hidden w-full h-full flex flex-col p-2 max-w-md">
-        <div class="bg-paper p-8 rounded-2xl shadow-2xl overflow-y-auto flex-grow mb-4 text-slate-800 card-font border border-gray-200">
-            <div id="result-content" class="text-lg leading-relaxed whitespace-pre-wrap"></div>
-        </div>
-        <div class="grid grid-cols-2 gap-3">
-            <button id="speak-toggle" onclick="toggleSpeak()" class="py-4 bg-green-700 rounded-xl font-bold text-white shadow-lg">🔊 播放朗讀</button>
-            <button onclick="showMain()" class="py-4 bg-gray-700 rounded-xl font-bold text-white shadow-lg">❤️ 返回</button>
-        </div>
-    </div>
-
-    <script type="module">
-        import { GoogleGenerativeAI } from "@google/generative-ai";
+    <div id="app" class="relative z-10 flex flex-col w-full h-full justify-between p-4 safe-top safe-bottom">
         
-        let model;
-        const TARGET_MODEL = "gemini-2.0-flash"; 
-
-        function sanitizeKey(key) { return key.replace(/[^\x00-\x7F]/g, "").trim(); }
-
-        document.getElementById('listBtn').onclick = async () => {
-            const rawKey = document.getElementById('apiKey').value;
-            const key = sanitizeKey(rawKey);
-            if (!key) return;
+        <!-- ================= MAIN VIEW (SEARCH & CATEGORIES) ================= -->
+        <div id="main-view" class="flex flex-col w-full h-full justify-between">
             
-            try {
-                const genAI = new GoogleGenerativeAI(key);
-                model = genAI.getGenerativeModel({ model: TARGET_MODEL });
-                localStorage.setItem('gemini_key', key);
-                document.getElementById('setup-view').classList.add('hidden');
-                document.getElementById('main-view').classList.remove('hidden');
-            } catch (e) { alert("Key 初始化失敗: " + e.message); }
-        };
+            <!-- App Header -->
+            <header class="text-center py-2 flex-none relative">
+                <h1 class="text-3xl md:text-4xl font-black tracking-wider gold-glow font-serif inline-block">太座喜樂 平安查經</h1>
+                <!-- API Setting Button -->
+                <button id="settings-btn" class="absolute right-2 top-2 text-amber-500/60 hover:text-amber-400 text-xl p-1 transition-colors focus:outline-none">
+                    <i class="fa-solid fa-gear"></i>
+                </button>
+                <p class="text-xs text-amber-200/60 mt-1">「心裏喜樂，就是良藥」— 獻給最親愛的太太</p>
+            </header>
 
-        async function fetchWithRetry(query, attempt = 0) {
-            try {
-                // 簡化提示詞以減少 Token 使用
-                const prompt = `你是玲玲的丈夫。針對「${query}」，請用溫暖口吻安慰她，並附上一句合和本聖經經文。
-開頭：親愛的玲玲 平安。
-字數約 100 字，精簡溫馨。`;
+            <!-- 8 Premium Categories Grid -->
+            <div class="grid grid-cols-2 gap-3 my-2 flex-grow items-stretch" id="categories-grid">
+                <!-- Dynamically populated by uiController.js -->
+            </div>
+
+            <!-- Speech Recording Controls & Instructions -->
+            <div class="flex-none bg-neutral-900/80 rounded-2xl p-3 border border-neutral-800 flex flex-col items-center justify-center gap-2 mb-1">
                 
-                return await model.generateContent(prompt);
-            } catch (err) {
-                if (attempt < 3) {
-                    await new Promise(r => setTimeout(r, Math.pow(2, attempt) * 1000));
-                    return fetchWithRetry(query, attempt + 1);
+                <!-- Real-time transcription display / Loader -->
+                <div id="live-text" class="text-center font-medium text-amber-200 text-lg min-h-[1.75rem] max-w-xs truncate px-2">
+                    點選下方麥克風，說出你想查的關鍵字
+                </div>
+
+                <!-- Mic button -->
+                <button id="mic-btn" class="w-16 h-16 rounded-full bg-amber-500 hover:bg-amber-400 text-neutral-950 flex items-center justify-center text-2xl transition-all duration-300 shadow-lg shadow-amber-500/20 active:scale-95 focus:outline-none">
+                    <i id="mic-icon" class="fa-solid fa-microphone"></i>
+                </button>
+
+                <!-- In-app Browser Warning Footer -->
+                <p class="text-[10px] text-neutral-500 text-center leading-tight">
+                    💡 提示：若使用 LINE 或微信無法錄音，請點右上角「用系統瀏覽器 (Safari/Chrome) 開啟」
+                </p>
+            </div>
+        </div>
+
+        <!-- ================= CARD VIEW (GREETING CARD DISPLAY) ================= -->
+        <div id="card-view" class="hidden flex-col w-full h-full justify-between">
+            
+            <!-- Beautiful Golden Greeting Card -->
+            <div class="flex-grow flex items-center justify-center p-3 overflow-hidden">
+                <div class="gold-card rounded-3xl w-full max-w-md h-full min-h-[300px] flex flex-col justify-between p-6 relative overflow-y-auto transition-all duration-500">
+                    
+                    <!-- Decorative Golden Corners -->
+                    <div class="absolute top-3 left-3 text-amber-500/40 text-sm font-serif">✥</div>
+                    <div class="absolute top-3 right-3 text-amber-500/40 text-sm font-serif">✥</div>
+                    <div class="absolute bottom-3 left-3 text-amber-500/40 text-sm font-serif">✥</div>
+                    <div class="absolute bottom-3 right-3 text-amber-500/40 text-sm font-serif">✥</div>
+
+                    <!-- Card Header / Title -->
+                    <div class="text-center flex-none">
+                        <span class="text-xs uppercase tracking-widest text-amber-400/80 border-b border-amber-500/30 pb-1 px-4">主賜平安</span>
+                    </div>
+
+                    <!-- Central Scripture & AI Warm Words -->
+                    <div class="flex-grow flex items-center justify-center py-4">
+                        <p id="card-content" class="card-scripture text-lg md:text-xl text-center text-amber-50 font-medium tracking-wide leading-relaxed px-2">
+                            <!-- Dynamically populated via typewriter -->
+                        </p>
+                    </div>
+
+                    <!-- Card Footer Signature -->
+                    <div class="text-center text-xs text-amber-400/50 italic flex-none">
+                        深愛妳的老公 敬上 🤍
+                    </div>
+                </div>
+            </div>
+
+            <!-- Loving TTS Audio Controls -->
+            <div class="flex-none flex flex-col gap-3 p-2 bg-neutral-900/60 rounded-3xl border border-neutral-800/80">
+                
+                <!-- Main TTS Aloud Button -->
+                <button id="read-btn" class="w-full h-14 rounded-2xl bg-gradient-to-r from-amber-500 to-amber-600 text-neutral-950 font-bold text-lg flex items-center justify-center gap-2 shadow-lg shadow-amber-500/15 active:scale-98 transition-all">
+                    <i class="fa-solid fa-face-smile-beam"></i>
+                    <span>大聲朗讀給太座聽 💖</span>
+                </button>
+
+                <!-- Sub controls (Stop and Love Back) -->
+                <div class="grid grid-cols-2 gap-3">
+                    <button id="stop-btn" class="h-12 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-neutral-200 font-semibold text-sm flex items-center justify-center gap-2 border border-neutral-700 transition-all">
+                        <i class="fa-solid fa-circle-stop text-red-400"></i> 停止播放
+                    </button>
+                    <button id="back-btn" class="h-12 rounded-xl bg-rose-950/40 hover:bg-rose-900/60 text-rose-300 font-semibold text-sm flex items-center justify-center gap-2 border border-rose-900/50 transition-all">
+                        <i class="fa-solid fa-heart text-rose-500 animate-pulse"></i> 太座歡喜 (回主頁)
+                    </button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- ================= API KEY SETTING OVERLAY MODAL ================= -->
+    <div id="api-modal" class="hidden fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
+        <div class="bg-neutral-900 border border-amber-500/30 rounded-3xl w-full max-w-sm p-6 flex flex-col gap-4 shadow-2xl">
+            <div class="text-center">
+                <i class="fa-solid fa-key text-amber-500 text-3xl mb-2"></i>
+                <h3 class="text-lg font-bold text-amber-100">設定 Gemini API 金鑰</h3>
+                <p class="text-xs text-neutral-400 mt-1">此金鑰僅儲存在您的裝置中，安全無虞</p>
+            </div>
+            <div>
+                <input type="password" id="api-key-input" placeholder="請輸入 AI API 金鑰 (AIzaSy...)" 
+                       class="w-full bg-neutral-950 border border-neutral-800 focus:border-amber-500/60 rounded-xl px-4 py-3 text-sm text-white focus:outline-none placeholder-neutral-600">
+            </div>
+            <div class="flex gap-3">
+                <button id="api-close-btn" class="flex-1 py-3 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-neutral-300 font-semibold text-sm transition-colors">
+                    取消
+                </button>
+                <button id="api-save-btn" class="flex-1 py-3 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-neutral-950 font-bold text-sm transition-all shadow-lg shadow-amber-500/15">
+                    儲存金鑰
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= JAVASCRIPT (MODULAR DESIGN IN A SINGLE FILE) ================= -->
+    <script type="module">
+        
+        // ==========================================
+        // 1. MODULE: SpeechService (STT & TTS Core)
+        // ==========================================
+        class SpeechService {
+            constructor() {
+                this.recognition = null;
+                this.synth = window.speechSynthesis;
+                this.isListening = false;
+                this.currentUtterance = null;
+
+                if (this.synth && this.synth.addEventListener) {
+                    this.synth.addEventListener('voiceschanged', () => {
+                        if (this.synth) this.synth.getVoices();
+                    });
                 }
-                throw err;
+            }
+
+            // --- TEXT TO SPEECH ---
+            speak(text, rate = 0.75, onEnd = null) {
+                this.stopSpeaking();
+
+                setTimeout(() => {
+                    try {
+                        if (!this.synth) return;
+                        this.synth.resume();
+
+                        const utterance = new SpeechSynthesisUtterance(text);
+                        const voices = this.synth.getVoices();
+                        
+                        let preferredVoice = voices.find(v => v.lang === 'zh-TW' && v.name.toLowerCase().includes('yating'));
+                        if (!preferredVoice) {
+                            preferredVoice = voices.find(v => v.lang === 'zh-TW');
+                        }
+                        if (!preferredVoice) {
+                            preferredVoice = voices.find(v => v.lang.includes('zh'));
+                        }
+
+                        if (preferredVoice) {
+                            utterance.voice = preferredVoice;
+                        }
+
+                        utterance.rate = rate;  
+                        utterance.pitch = 0.85; 
+                        utterance.volume = 1.0;
+
+                        utterance.onend = () => {
+                            this.currentUtterance = null;
+                            if (onEnd) onEnd();
+                        };
+
+                        utterance.onerror = (err) => {
+                            if (err.error !== 'interrupted' && err.error !== 'canceled') {
+                                console.warn("Speech Utterance Warning:", err.error || err);
+                            }
+                            this.currentUtterance = null;
+                            if (onEnd) onEnd();
+                        };
+
+                        this.currentUtterance = utterance;
+                        this.synth.speak(utterance);
+                    } catch (e) {
+                        console.error("Speech Synthesis Exception:", e);
+                    }
+                }, 150);
+            }
+
+            stopSpeaking() {
+                if (this.synth) {
+                    try {
+                        this.synth.cancel();
+                    } catch (e) {
+                        console.error("Failed to cancel speech synthesis:", e);
+                    }
+                }
+                this.currentUtterance = null;
+            }
+
+            // --- SPEECH TO TEXT ---
+            startListening(onInterim, onFinal, onError) {
+                this.stopSpeaking();
+
+                const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+                if (!SpeechRecognition) {
+                    onError("您的瀏覽器不支援網語音辨識。建議使用 Safari 或 Chrome！");
+                    return;
+                }
+
+                try {
+                    this.recognition = new SpeechRecognition();
+                    this.recognition.lang = 'zh-TW';
+                    this.recognition.continuous = true;
+                    this.recognition.interimResults = true;
+                    this.recognition.maxAlternatives = 1;
+
+                    this.recognition.onstart = () => {
+                        this.isListening = true;
+                    };
+
+                    this.recognition.onresult = (event) => {
+                        let interimTranscript = '';
+                        let finalTranscript = '';
+
+                        for (let i = event.resultIndex; i < event.results.length; ++i) {
+                            const result = event.results[i];
+                            const text = result[0].transcript;
+                            
+                            if (result.isFinal) {
+                                finalTranscript += text;
+                            } else {
+                                interimTranscript += text;
+                            }
+                        }
+
+                        const displayProgress = interimTranscript || finalTranscript;
+                        if (displayProgress) {
+                            onInterim(displayProgress);
+                        }
+
+                        const fullCheck = (finalTranscript + interimTranscript).toUpperCase();
+                        if (fullCheck.includes("OK") || fullCheck.includes("ＯＫ") || fullCheck.includes("好了") || fullCheck.includes("確定")) {
+                            const cleanedText = (finalTranscript || interimTranscript)
+                                .replace(/ok/gi, '')
+                                .replace(/ｏｋ/gi, '')
+                                .replace(/好了/g, '')
+                                .replace(/確定/g, '')
+                                .trim();
+                            
+                            this.stopListening();
+                            onFinal(cleanedText);
+                        }
+                    };
+
+                    this.recognition.onerror = (event) => {
+                        if (event.error !== 'no-speech') {
+                            console.error("Speech Recognition Error:", event.error);
+                            onError(`辨識出錯 (${event.error})，請再試一次。`);
+                            this.stopListening();
+                        }
+                    };
+
+                    this.recognition.onend = () => {
+                        this.isListening = false;
+                        this.recognition = null;
+                    };
+
+                    this.recognition.start();
+
+                } catch (e) {
+                    console.error("Failed to initialize Speech Recognition:", e);
+                    onError("啟動語音模組失敗。請確認是否已授權麥克風使用。");
+                }
+            }
+
+            stopListening() {
+                if (this.recognition && this.isListening) {
+                    this.recognition.stop();
+                }
+                this.isListening = false;
             }
         }
 
-        window.askAI = async (query) => {
-            const cacheKey = `cache_${query.substring(0, 10)}`;
-            const cached = localStorage.getItem(cacheKey);
-            
-            document.getElementById('main-view').classList.add('hidden');
-            document.getElementById('result-view').classList.remove('hidden');
-            const contentDiv = document.getElementById('result-content');
 
-            if (cached) {
-                contentDiv.innerHTML = cached;
-                return;
+        // ==========================================
+        // 2. MODULE: UIController (Dynamic layout & view flow)
+        // ==========================================
+        class UIController {
+            constructor() {
+                this.mainView = document.getElementById('main-view');
+                this.cardView = document.getElementById('card-view');
+                this.categoriesGrid = document.getElementById('categories-grid');
+                this.liveText = document.getElementById('live-text');
+                
+                this.micBtn = document.getElementById('mic-btn');
+                this.micIcon = document.getElementById('mic-icon');
+                
+                this.cardContent = document.getElementById('card-content');
+                this.readBtn = document.getElementById('read-btn');
+                this.stopBtn = document.getElementById('stop-btn');
+                this.backBtn = document.getElementById('back-btn');
+                
+                this.particleContainer = document.getElementById('particle-container');
+
+                // API Key Settings UI elements
+                this.settingsBtn = document.getElementById('settings-btn');
+                this.apiModal = document.getElementById('api-modal');
+                this.apiKeyInput = document.getElementById('api-key-input');
+                this.apiSaveBtn = document.getElementById('api-save-btn');
+                this.apiCloseBtn = document.getElementById('api-close-btn');
+
+                this.typewriterInterval = null;
             }
 
-            contentDiv.innerText = "老公正在為妳求告中...";
-            try {
-                const result = await fetchWithRetry(query);
-                const text = result.response.text();
-                const formatted = text.replace(/\n/g, '<br><br>');
-                localStorage.setItem(cacheKey, formatted);
-                contentDiv.innerHTML = formatted;
-            } catch (e) { contentDiv.innerText = "連線失敗，請確認 API Key 或稍後再試。"; }
-        };
-
-        window.startVoice = () => {
-            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-            if (!SpeechRecognition) { alert("瀏覽器不支援語音功能。"); return; }
-            const rec = new SpeechRecognition();
-            rec.lang = 'zh-TW';
-            document.getElementById('mic-btn').innerText = "聆聽中...";
-            rec.onresult = (e) => {
-                const text = e.results[0][0].transcript;
-                document.getElementById('voice-transcript').innerText = text;
-                window.askAI(text);
-            };
-            rec.onend = () => document.getElementById('mic-btn').innerText = "🎤 按下麥克風(說完送出)";
-            rec.start();
-        };
-
-        window.toggleSpeak = () => {
-            window.speechSynthesis.cancel();
-            const content = document.getElementById('result-content').innerText;
-            const msg = new SpeechSynthesisUtterance(content);
-            msg.rate = 0.85;
-            window.speechSynthesis.speak(msg);
-        };
-
-        window.resetKey = () => { localStorage.removeItem('gemini_key'); location.reload(); };
-        window.showMain = () => {
-            document.getElementById('result-view').classList.add('hidden');
-            document.getElementById('main-view').classList.remove('hidden');
-            window.speechSynthesis.cancel();
-        };
-
-        window.onload = () => {
-            const savedKey = localStorage.getItem('gemini_key');
-            if (savedKey) {
-                const genAI = new GoogleGenerativeAI(savedKey);
-                model = genAI.getGenerativeModel({ model: TARGET_MODEL });
-                document.getElementById('setup-view').classList.add('hidden');
-                document.getElementById('main-view').classList.remove('hidden');
+            renderCategories(categories, onClick) {
+                this.categoriesGrid.innerHTML = '';
+                
+                categories.forEach(cat => {
+                    const button = document.createElement('button');
+                    button.className = "flex flex-col items-center justify-center rounded-2xl bg-neutral-900 border-2 border-neutral-800 hover:border-amber-500/40 hover:bg-neutral-800/80 text-white font-bold transition-all duration-200 active:scale-95 select-none touch-manipulation gap-1 p-2";
+                    button.innerHTML = `
+                        <span class="text-3xl md:text-4xl filter drop-shadow-md">${cat.icon}</span>
+                        <span class="text-base md:text-lg tracking-wide text-neutral-200">${cat.name}</span>
+                    `;
+                    button.onclick = (e) => {
+                        e.preventDefault();
+                        onClick(cat.name);
+                    };
+                    this.categoriesGrid.appendChild(button);
+                });
             }
-        };
+
+            showMainView() {
+                this.cardView.classList.add('hidden');
+                this.cardView.classList.remove('flex');
+                this.mainView.classList.remove('hidden');
+                this.mainView.classList.add('flex');
+                this.clearLiveText();
+                this.clearHearts();
+                this.stopTypewriter();
+            }
+
+            // High compatibility 0.05 seconds per character Typewriter effect
+            showCardView(text) {
+                this.mainView.classList.add('hidden');
+                this.mainView.classList.remove('flex');
+                this.cardView.classList.remove('hidden');
+                this.cardView.classList.add('flex');
+                
+                this.stopTypewriter();
+                this.cardContent.innerText = "";
+                
+                let index = 0;
+                // Typewriter interval of 50ms (0.05 seconds)
+                this.typewriterInterval = setInterval(() => {
+                    if (index < text.length) {
+                        this.cardContent.innerText += text.charAt(index);
+                        index++;
+                    } else {
+                        this.stopTypewriter();
+                    }
+                }, 50);
+                
+                this.spawnHearts();
+            }
+
+            stopTypewriter() {
+                if (this.typewriterInterval) {
+                    clearInterval(this.typewriterInterval);
+                    this.typewriterInterval = null;
+                }
+            }
+
+            updateLiveText(text, isListening = false) {
+                this.liveText.innerText = text;
+                if (isListening) {
+                    this.liveText.classList.add('text-rose-400');
+                    this.liveText.classList.remove('text-amber-200');
+                } else {
+                    this.liveText.classList.remove('text-rose-400');
+                    this.liveText.classList.add('text-amber-200');
+                }
+            }
+
+            clearLiveText() {
+                this.liveText.innerText = "點選下方麥克風，說出你想查的關鍵字";
+                this.liveText.classList.remove('text-rose-400');
+                this.liveText.classList.add('text-amber-200');
+            }
+
+            setMicState(isRecording) {
+                if (isRecording) {
+                    this.micBtn.classList.add('mic-active');
+                    this.micIcon.className = "fa-solid fa-stop text-white";
+                } else {
+                    this.micBtn.classList.remove('mic-active');
+                    this.micIcon.className = "fa-solid fa-microphone text-neutral-950";
+                }
+            }
+
+            spawnHearts() {
+                this.clearHearts();
+                for (let i = 0; i < 15; i++) {
+                    const heart = document.createElement('div');
+                    heart.className = 'heart-particle fas fa-heart';
+                    heart.style.left = `${Math.random() * 100}vw`;
+                    heart.style.animationDelay = `${Math.random() * 4}s`;
+                    heart.style.fontSize = `${Math.random() * 15 + 10}px`;
+                    this.particleContainer.appendChild(heart);
+                }
+            }
+
+            clearHearts() {
+                this.particleContainer.innerHTML = '';
+            }
+
+            // Modal Controls
+            openSettingsModal(currentKey = "") {
+                this.apiKeyInput.value = currentKey;
+                this.apiModal.classList.remove('hidden');
+            }
+
+            closeSettingsModal() {
+                this.apiModal.classList.add('hidden');
+            }
+        }
+
+
+        // ==========================================
+        // 3. MODULE: App (System orchestrator)
+        // ==========================================
+        const CATEGORIES = [
+            { name: "心情悶", icon: "🌧️" },
+            { name: "煩躁忙", icon: "😫" },
+            { name: "健康", icon: "💪" },
+            { name: "家庭", icon: "🏠" },
+            { name: "親子", icon: "👶" },
+            { name: "夫妻相處", icon: "👩‍❤️‍👨" },
+            { name: "朋友", icon: "👭" },
+            { name: "想老公", icon: "💖" }
+        ];
+
+        class App {
+            constructor() {
+                this.speech = new SpeechService();
+                this.ui = new UIController();
+                
+                // Advanced Stability & API Configs
+                this.apiKey = localStorage.getItem('gemini_api_key') || "";
+                this.isApiWorking = false;
+                this.isProcessing = false;
+                this.lastRequestTime = 0;
+                this.lastQuery = "";
+                
+                // Latest highly compatible, fast and production-ready Gemini Model
+                this.modelName = "gemini-2.5-flash";
+
+                this.init();
+            }
+
+            async init() {
+                // 1. Render Categories grid dynamically
+                this.ui.renderCategories(CATEGORIES, (categoryName) => this.handleCategorySelect(categoryName));
+
+                // 2. Bind Mic Button Event
+                this.ui.micBtn.onclick = (e) => {
+                    e.preventDefault();
+                    this.toggleVoiceInput();
+                };
+
+                // 3. Bind Card Back Button Event
+                this.ui.backBtn.onclick = (e) => {
+                    e.preventDefault();
+                    this.speech.stopSpeaking();
+                    this.ui.showMainView();
+                };
+
+                // 4. Bind Card TTS Buttons Events
+                this.ui.readBtn.onclick = (e) => {
+                    e.preventDefault();
+                    this.readAloudCard();
+                };
+
+                this.ui.stopBtn.onclick = (e) => {
+                    e.preventDefault();
+                    this.speech.stopSpeaking();
+                };
+
+                // 5. Bind API Settings Actions
+                this.ui.settingsBtn.onclick = (e) => {
+                    e.preventDefault();
+                    this.ui.openSettingsModal(this.apiKey);
+                };
+
+                this.ui.apiCloseBtn.onclick = (e) => {
+                    e.preventDefault();
+                    this.ui.closeSettingsModal();
+                };
+
+                this.ui.apiSaveBtn.onclick = async (e) => {
+                    e.preventDefault();
+                    const newKey = this.ui.apiKeyInput.value.trim();
+                    if (!newKey) {
+                        alert("請輸入有效的金鑰！");
+                        return;
+                    }
+                    this.apiKey = newKey;
+                    localStorage.setItem('gemini_api_key', newKey);
+                    this.ui.closeSettingsModal();
+                    
+                    // Trigger immediate check upon saving new key
+                    this.ui.updateLiveText("正在驗證新金鑰...");
+                    const isOk = await this.runStartupHealthCheck();
+                    if (isOk) {
+                        alert("✨ 金鑰驗證成功！AI 功能已準備就緒。");
+                    }
+                };
+
+                // Prevent iOS Safari bounce effect
+                document.addEventListener('touchmove', (e) => {
+                    if (e.scale !== 1) { e.preventDefault(); }
+                }, { passive: false });
+
+                // Check key existance & run Health check immediately
+                if (!this.apiKey) {
+                    setTimeout(() => {
+                        this.ui.openSettingsModal();
+                    }, 800);
+                } else {
+                    await this.runStartupHealthCheck();
+                }
+            }
+
+            // --- STARTUP HEALTH CHECK (Low token validation acting as a GET ping) ---
+            async runStartupHealthCheck() {
+                if (!this.apiKey) {
+                    this.isApiWorking = false;
+                    this.ui.updateLiveText("⚠️ 尚未設定 API 金鑰，請點選右上角齒輪設定。");
+                    return false;
+                }
+
+                try {
+                    // Strict low-token GET health check request to fetch model info
+                    const checkUrl = `https://generativelanguage.googleapis.com/v1beta/models/${this.modelName}?key=${this.apiKey}`;
+                    const response = await fetch(checkUrl);
+                    
+                    if (response.ok) {
+                        this.isApiWorking = true;
+                        this.ui.updateLiveText("✨ AI 功能已準備就緒，隨時可為太座服務。");
+                        return true;
+                    } else {
+                        const errData = await response.json().catch(() => ({}));
+                        this.isApiWorking = false;
+                        const reason = this.diagnoseError(response.status, errData);
+                        this.ui.updateLiveText(`⚠️ API 驗證失敗: ${reason}`);
+                        
+                        // STRICT FAILURE INTERRUPT: Instantly trigger alert and lock app down to prevent cascading 429 retries
+                        alert(`【API 健康檢查失敗】\n原因：${reason}\n系統已立即鎖定 AI 發送功能，請更正金鑰後再使用，避免發送多次無效請求。`);
+                        return false;
+                    }
+                } catch (e) {
+                    this.isApiWorking = false;
+                    const netReason = "網路連線異常，或 API 網域遭到限制/阻擋。";
+                    this.ui.updateLiveText(`⚠️ 連線失敗: ${netReason}`);
+                    alert(`【網路連線異常】\n無法連接至 Gemini 伺服器，請檢查網路狀況或金鑰是否正確。系統已暫時鎖定 AI 查詢。`);
+                    return false;
+                }
+            }
+
+            // Detailed Diagnostic Helper
+            diagnoseError(status, errData) {
+                const message = errData?.error?.message || "";
+                if (status === 400 && message.includes("API key not valid")) {
+                    return "「API 金鑰無效」— 請確認輸入的字串正確性。";
+                }
+                if (status === 403) {
+                    return "「存取被拒」— 您的金鑰限制、網域政策或地理位置限制不允許此連線。";
+                }
+                if (status === 429) {
+                    return "「請求過於頻繁 (Rate Limit) 或配額用盡」— 請稍候再試。";
+                }
+                if (status === 400) {
+                    return `「API 參數錯誤」— 錯誤細節: ${message}`;
+                }
+                return `「伺服器錯誤 ${status}」— ${message || "未知原因"}`;
+            }
+
+            // --- RATE LIMIT & DE-DUPLICATION SENTINEL ---
+            isRequestAllowed(query) {
+                const now = Date.now();
+                
+                if (this.isProcessing) {
+                    this.ui.updateLiveText("⏳ AI 正在精心準備中，請先等我完成...");
+                    return false;
+                }
+
+                // Prevent repeat requests of same keyword within 10 seconds
+                if (query === this.lastQuery && (now - this.lastRequestTime < 10000)) {
+                    this.ui.updateLiveText("✨ 剛剛才查過相同內容囉！");
+                    return false;
+                }
+
+                // Strictly throttle back-to-back requests within 2 seconds
+                if (now - this.lastRequestTime < 2000) {
+                    this.ui.updateLiveText("⏳ 點選太快了，請等我 2 秒鐘...");
+                    return false;
+                }
+
+                return true;
+            }
+
+            // --- CORE AI QUERY DISPATCHER ---
+            async queryGeminiAI(userQuery) {
+                if (!this.isRequestAllowed(userQuery)) return;
+                
+                // STRICT LOCKDOWN ON FALSE STATE: If API working flag is false, immediately intercept without any retry loops.
+                if (!this.isApiWorking) {
+                    this.ui.updateLiveText("⚠️ API 金鑰驗證未通過，已拒絕發送請求！");
+                    alert("【請求已攔截】API 金鑰目前處於失效或未驗證狀態。請點擊右上角「⚙️ 齒輪」重新驗證並更新金鑰，避免重複發送導致 429 錯誤。");
+                    return;
+                }
+
+                this.isProcessing = true;
+                this.lastQuery = userQuery;
+                this.lastRequestTime = Date.now();
+                this.ui.updateLiveText("💖 正在用心為太座查考經文...", true);
+
+                // Deeply tailored internal spiritual instructional prompt
+                const systemPrompt = `
+你是一位中華福音神學院的資深教授。
+現在，請你完全隱藏這個教授與神學院的身份，改以「極度深愛玲玲、體貼入微的老公」角色來對話。
+玲玲（你的太太）的個人特質背景如下：中高年齡女性（高中程度），已有 10 年虔誠的基督信仰，孩子目前是大學生。
+
+請針對太太輸入的心情、煩躁或生活提問 "${userQuery}"，撰寫一段專屬的心靈屬靈回應。
+
+【回覆規則與格式】
+1. 抬頭第一行必須寫：「親愛的玲玲 平安」
+2. 回覆內容中，必須巧妙包含一處最合適、最能帶來力量與平安的「聖經和合本」對應金句（必須明確註明書卷與章節，金句必須使用中文引號括起）。
+3. 扣除抬頭與金句，你的安慰和疼惜語字數必須控制在 100 ~ 200 字之間。
+4. 全程語氣必須是溫柔、疼愛、深情、成熟且親切的老公口吻，不要使用任何生硬或學術性質的神學專業術語。
+5. 尾段可加上簡單的溫柔陪伴支持，但請維持單一卡片內容格式。
+`;
+
+                try {
+                    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${this.modelName}:generateContent?key=${this.apiKey}`;
+                    
+                    const response = await fetch(apiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            contents: [{
+                                parts: [{ text: systemPrompt }]
+                            }]
+                        })
+                    });
+
+                    if (response.ok) {
+                        const data = await response.json();
+                        const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+                        
+                        if (rawText) {
+                            this.ui.showCardView(rawText.trim());
+                        } else {
+                            throw new Error("AI 回應包解析異常");
+                        }
+                    } else {
+                        const errData = await response.json().catch(() => ({}));
+                        const reason = this.diagnoseError(response.status, errData);
+                        alert(`【AI 連線失敗】\n原因：${reason}`);
+                        this.ui.updateLiveText(`❌ 查詢失敗: ${reason}`);
+                    }
+                } catch (e) {
+                    console.error("Gemini API Network Error:", e);
+                    this.ui.updateLiveText("❌ 網路連線錯誤，請確認網路或 API 阻擋狀態。");
+                    alert("【網路異常】連線到 Gemini AI 伺服器失敗，請確認目前網路狀況，或改用 Safari 瀏覽器再試。");
+                } finally {
+                    this.isProcessing = false;
+                }
+            }
+
+            // Flow 1: Clicked category button directly
+            handleCategorySelect(categoryName) {
+                this.speech.stopSpeaking();
+                this.speech.speak(`好的，為太座尋找關於${categoryName}的平安。`, 0.85, () => {
+                    this.queryGeminiAI(categoryName);
+                });
+            }
+
+            // Flow 2: Voice command logic
+            toggleVoiceInput() {
+                if (this.speech.isListening) {
+                    this.speech.stopListening();
+                    this.ui.setMicState(false);
+                    this.ui.clearLiveText();
+                } else {
+                    this.ui.setMicState(true);
+                    this.ui.updateLiveText("請說... 說完請說「OK」", true);
+
+                    this.speech.startListening(
+                        (interimText) => {
+                            this.ui.updateLiveText(interimText, true);
+                        },
+                        (finalText) => {
+                            this.ui.setMicState(false);
+                            if (finalText) {
+                                this.queryGeminiAI(finalText);
+                            } else {
+                                this.ui.updateLiveText("抱歉，沒聽到關鍵字，請再試一次。");
+                            }
+                        },
+                        (errorMsg) => {
+                            this.ui.setMicState(false);
+                            this.ui.updateLiveText(errorMsg, false);
+                        }
+                    );
+                }
+            }
+
+            readAloudCard() {
+                const textToRead = this.ui.cardContent.innerText;
+                const lovingIntro = "親愛的，讓我讀神的話語給妳聽：";
+                this.speech.speak(lovingIntro + textToRead);
+            }
+        }
+
+        // Initialize Application
+        window.addEventListener('DOMContentLoaded', () => {
+            new App();
+        });
+
     </script>
 </body>
 </html>
